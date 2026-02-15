@@ -9,7 +9,7 @@
     
     <div class="stat-card">
       <h3>⚖️ Total Gear Weight</h3>
-      <p class="stat-number"><%= number_to_human(@total_gear_weight, units: :kg, precision: 2) %></p>
+      <p class="stat-number"><%= number_with_precision(@total_gear_weight, precision: 2) %> kg</p>
     </div>
     
     <div class="stat-card">
