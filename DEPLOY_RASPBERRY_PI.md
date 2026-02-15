@@ -8,6 +8,54 @@ This guide walks you through deploying your Rails application to a Raspberry Pi 
 - SSH access to your Raspberry Pi
 - Ruby 3.3+ and Rails 7+ installed on the Pi
 - Your development machine with the application code
+- GitHub SSH authentication set up (see below if using Git)
+
+---
+
+## Setting Up GitHub SSH Authentication (For Git Clone Method)
+
+If you plan to use Git to deploy your code, set up SSH authentication to avoid entering passwords:
+
+### On Your Raspberry Pi
+
+```bash
+# 1. Generate an SSH key pair
+ssh-keygen -t ed25519 -C "your_email@example.com"
+
+# Press Enter to accept the default file location (~/.ssh/id_ed25519)
+# Enter a passphrase (optional but recommended) or press Enter to skip
+
+# 2. Start the SSH agent
+eval "$(ssh-agent -s)"
+
+# 3. Add your SSH key to the agent
+ssh-add ~/.ssh/id_ed25519
+
+# 4. Display your public key to copy it
+cat ~/.ssh/id_ed25519.pub
+```
+
+Copy the entire output (starts with `ssh-ed25519` and ends with your email).
+
+### On GitHub Website
+
+1. Go to **github.com** → Click your profile picture → **Settings**
+2. Click **SSH and GPG keys** (left sidebar)
+3. Click **New SSH key**
+4. Give it a title (e.g., "Raspberry Pi")
+5. Paste your public key into the "Key" field
+6. Click **Add SSH key**
+
+### Test the Connection
+
+```bash
+# On Raspberry Pi
+ssh -T git@github.com
+
+# You should see: "Hi username! You've successfully authenticated..."
+```
+
+---
 
 ## Deployment Methods
 
@@ -18,10 +66,14 @@ Choose one of these methods based on your preference:
 If your code is in a Git repository (GitHub, GitLab, etc.):
 
 ```bash
-# On your Raspberry Pi
+# On your Raspberry Pi (using SSH - make sure you've set up SSH keys first)
 cd ~
-git clone https://github.com/yourusername/hiking_gear_app.git
-cd hiking_gear_app
+git clone git@github.com:yourusername/hiking-gear.git
+cd hiking-gear
+
+# Or using HTTPS (will prompt for credentials)
+git clone https://github.com/yourusername/hiking-gear.git
+cd hiking-gear
 ```
 
 ### Method 2: Direct Copy via SCP
@@ -31,10 +83,10 @@ If you don't use Git, copy files directly from your computer:
 ```bash
 # From your Windows machine (PowerShell)
 # Replace 'pi' with your username and 'rails-pi.local' with your Pi's hostname/IP
-scp -r C:\Users\typoz\OneDrive\dev\ruby\hiking_gear_app pi@rails-pi.local:~/
+scp -r C:\Users\typoz\OneDrive\dev\git\hiking-gear pi@rails-pi.local:~/
 
 # From Linux/macOS
-scp -r ~/path/to/hiking_gear_app pi@rails-pi.local:~/
+scp -r ~/path/to/hiking-gear pi@rails-pi.local:~/
 ```
 
 ### Method 3: Using rsync (Best for updates)
@@ -42,11 +94,11 @@ scp -r ~/path/to/hiking_gear_app pi@rails-pi.local:~/
 ```bash
 # From Linux/macOS/WSL
 rsync -avz --exclude 'node_modules' --exclude 'tmp' --exclude 'log' \
-  ~/path/to/hiking_gear_app/ pi@rails-pi.local:~/hiking_gear_app/
+  ~/path/to/hiking-gear/ pi@rails-pi.local:~/hiking-gear/
 
 # From Windows (install rsync first via Chocolatey: choco install rsync)
 rsync -avz --exclude 'node_modules' --exclude 'tmp' --exclude 'log' \
-  /c/Users/typoz/OneDrive/dev/ruby/hiking_gear_app/ pi@rails-pi.local:~/hiking_gear_app/
+  /c/Users/typoz/OneDrive/dev/git/hiking-gear/ pi@rails-pi.local:~/hiking-gear/
 ```
 
 ---
@@ -59,13 +111,21 @@ Once your code is on the Pi, SSH into it and follow these steps:
 
 ```bash
 ssh pi@rails-pi.local
-cd ~/hiking_gear_app
+cd ~/hiking-gear  # or whatever you named your directory
 ```
 
 ### 2. Install Dependencies
 
 ```bash
-# Install Ruby gems
+# First, install Ruby gems to generate Gemfile.lock
+bundle install
+
+# Commit the Gemfile.lock to version control
+git add Gemfile.lock
+git commit -m "Add Gemfile.lock for deployment"
+git push
+
+# Now configure deployment mode for production use (optional)
 bundle config set --local deployment 'true'
 bundle config set --local without 'development test'
 bundle install
@@ -73,7 +133,19 @@ bundle install
 # If you get memory issues, increase swap (see troubleshooting)
 ```
 
-### 3. Set Up Database
+**Note:** The first `bundle install` creates `Gemfile.lock`. Deployment mode requires this file to exist first.
+
+### 3. Set Up Secret Key and Database
+
+Rails requires a secret key for production. Set it up first:
+
+```bash
+# Generate and set secret key (required for production)
+export SECRET_KEY_BASE=$(rails secret)
+
+# To make this permanent, add to ~/.bashrc
+echo "export SECRET_KEY_BASE=$(rails secret)" >> ~/.bashrc
+```
 
 For SQLite (default, easiest):
 
@@ -100,35 +172,13 @@ RAILS_ENV=production rails db:migrate
 RAILS_ENV=production rails db:seed
 ```
 
-### 4. Set Up Credentials
-
-```bash
-# Generate a secret key
-rails secret
-
-# Create/edit credentials file
-EDITOR=nano rails credentials:edit --environment production
-
-# Add this content (replace YOUR_SECRET_KEY with output from 'rails secret'):
-# secret_key_base: YOUR_SECRET_KEY_HERE
-# Save and exit (Ctrl+X, Y, Enter)
-```
-
-Or use environment variable (simpler):
-
-```bash
-# Add to ~/.bashrc
-echo 'export SECRET_KEY_BASE=$(rails secret)' >> ~/.bashrc
-source ~/.bashrc
-```
-
-### 5. Precompile Assets
+### 4. Precompile Assets
 
 ```bash
 RAILS_ENV=production rails assets:precompile
 ```
 
-### 6. Test the Application
+### 5. Test the Application
 
 ```bash
 # Start the server (accessible only from Pi)
