@@ -2,6 +2,8 @@
 // Controller files must be named *_controller.js.
 
 import { application } from "./application"
-import { eagerLoadControllersFrom } from "@hotwired/stimulus-loading"
 
-eagerLoadControllersFrom("controllers", application)
+// Import and register controllers
+import TripGearController from "./trip_gear_controller"
+
+application.register("trip-gear", TripGearController)
