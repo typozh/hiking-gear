@@ -23,6 +23,10 @@ gem 'bcrypt', '~> 3.1.7'
 # JSON APIs
 gem 'jbuilder'
 
+# File import/export
+gem 'roo', '~> 2.10'
+gem 'roo-xls'
+
 # Timezone data for Windows
 gem 'tzinfo-data', platforms: %i[windows jruby]
 

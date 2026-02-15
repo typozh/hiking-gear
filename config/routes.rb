@@ -25,6 +25,14 @@ Rails.application.routes.draw do
   # Gear items
   resources :gear_items
 
+  # Gear imports
+  resources :gear_imports, only: [:new, :create] do
+    collection do
+      get :map
+      post :process
+    end
+  end
+
   # Gear categories (optional - for admin)
   resources :gear_categories, only: [:index, :show]
 end

@@ -1,7 +1,10 @@
 <div class="gear-index">
   <div class="page-header">
     <h1>My Gear</h1>
-    <%= link_to 'Add New Gear', new_gear_item_path, class: 'btn-primary' %>
+    <div class="header-actions">
+      <%= link_to '📥 Import Gear', new_gear_import_path, class: 'btn-secondary' %>
+      <%= link_to 'Add New Gear', new_gear_item_path, class: 'btn-primary' %>
+    </div>
   </div>
 
   <div class="filters">

@@ -1,0 +1,329 @@
+<div class="page-header">
+  <h1>🔗 Map Your Columns</h1>
+  <p>File: <strong><%= @filename %></strong></p>
+</div>
+
+<div class="mapping-container">
+  <div class="instructions-card">
+    <h3>📝 Instructions</h3>
+    <p>Match each column from your file to a gear field. Columns you don't want to import can be set to "Skip".</p>
+    <p><strong>Required:</strong> Name field must be mapped.</p>
+  </div>
+
+  <% if @categories.any? %>
+    <div class="categories-reference">
+      <h4>📚 Available Categories</h4>
+      <div class="category-chips">
+        <% @categories.each do |category| %>
+          <span class="category-chip"><%= category.icon %> <%= category.name %></span>
+        <% end %>
+      </div>
+      <p style="font-size: 0.9rem; color: #666; margin-top: 0.5rem;">
+        Use these exact names in your Category column, or leave blank for no category.
+      </p>
+    </div>
+  <% end %>
+
+  <div class="preview-section">
+    <h3>📊 Preview (first 5 rows)</h3>
+    <div class="table-scroll">
+      <table class="preview-table">
+        <thead>
+          <tr>
+            <% @headers.each do |header| %>
+              <th><%= header %></th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <% @preview_rows[1..5]&.each do |row| %>
+            <tr>
+              <% @headers.length.times do |i| %>
+                <td><%= row[i] %></td>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <%= form_with url: process_gear_imports_path, method: :post, local: true, class: "mapping-form" do |f| %>
+    <div class="mapping-grid">
+      <div class="mapping-header">
+        <div>Your Column</div>
+        <div>→</div>
+        <div>Maps To</div>
+      </div>
+
+      <% @headers.each_with_index do |header, index| %>
+        <div class="mapping-row">
+          <div class="column-name">
+            <strong><%= header %></strong>
+            <span class="sample-value">
+              e.g., <%= @preview_rows[1]&.dig(index)&.to_s&.truncate(30) || 'N/A' %>
+            </span>
+          </div>
+          
+          <div class="arrow">→</div>
+          
+          <div class="field-select">
+            <%= select_tag "mapping[#{detect_field_name(header)}]", 
+                options_for_select(
+                  [['Skip this column', 'skip']] + 
+                  @gear_fields.map { |key, label| [label, key] },
+                  detect_field_name(header)
+                ),
+                class: 'mapping-select',
+                data: { column: header }
+            %>
+            <%= hidden_field_tag "mapping_column_#{index}", header %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="form-actions">
+      <%= f.submit "Import Gear Items", class: "btn-primary", data: { confirm: "This will create gear items from your file. Continue?" } %>
+      <%= link_to "Back", new_gear_import_path, class: "btn-secondary" %>
+      <%= link_to "Cancel", gear_items_path, class: "btn-secondary" %>
+    </div>
+  <% end %>
+</div>
+
+<% content_for :head do %>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Auto-detect and suggest mappings based on column names
+  const mappingSelects = document.querySelectorAll('.mapping-select');
+  
+  mappingSelects.forEach(select => {
+    const columnName = select.dataset.column.toLowerCase();
+    let suggestedValue = 'skip';
+    
+    // Smart matching
+    if (columnName.includes('name') || columnName.includes('item')) {
+      suggestedValue = 'name';
+    } else if (columnName.includes('brand') || columnName.includes('manufacturer')) {
+      suggestedValue = 'brand';
+    } else if (columnName.includes('model')) {
+      suggestedValue = 'model';
+    } else if (columnName.includes('weight') || columnName.includes('mass') || columnName.includes('kg')) {
+      suggestedValue = 'weight';
+    } else if (columnName.includes('category') || columnName.includes('type')) {
+      suggestedValue = 'gear_category_id';
+    } else if (columnName.includes('note') || columnName.includes('description') || columnName.includes('comment')) {
+      suggestedValue = 'notes';
+    }
+    
+    select.value = suggestedValue;
+  });
+  
+  // Validate that name is mapped before submission
+  document.querySelector('.mapping-form').addEventListener('submit', function(e) {
+    const mappingSelects = Array.from(document.querySelectorAll('.mapping-select'));
+    const hasMappedName = mappingSelects.some(select => select.value === 'name');
+    
+    if (!hasMappedName) {
+      e.preventDefault();
+      alert('Please map at least one column to the "Name" field. Name is required for all gear items.');
+      return false;
+    }
+  });
+});
+</script>
+<% end %>
+
+<style>
+.mapping-container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.instructions-card {
+  background: #e3f2fd;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.instructions-card h3 {
+  margin-top: 0;
+  color: #1976d2;
+}
+
+.categories-reference {
+  background: #f5f5f5;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.categories-reference h4 {
+  margin-top: 0;
+}
+
+.category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.category-chip {
+  background: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  border: 1px solid #ddd;
+  font-size: 0.9rem;
+}
+
+.preview-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 2rem;
+}
+
+.preview-section h3 {
+  margin-top: 0;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.preview-table th,
+.preview-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border: 1px solid #ddd;
+  white-space: nowrap;
+}
+
+.preview-table th {
+  background: #f5f5f5;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+
+.preview-table tr:nth-child(even) {
+  background: #fafafa;
+}
+
+.mapping-form {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.mapping-header {
+  display: grid;
+  grid-template-columns: 1fr 50px 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  background: #2196F3;
+  color: white;
+  border-radius: 8px 8px 0 0;
+  font-weight: 600;
+  text-align: center;
+}
+
+.mapping-grid {
+  margin-bottom: 2rem;
+}
+
+.mapping-row {
+  display: grid;
+  grid-template-columns: 1fr 50px 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid #eee;
+  align-items: center;
+}
+
+.mapping-row:hover {
+  background: #f9f9f9;
+}
+
+.column-name {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sample-value {
+  font-size: 0.85rem;
+  color: #666;
+  font-style: italic;
+}
+
+.arrow {
+  text-align: center;
+  font-size: 1.5rem;
+  color: #2196F3;
+}
+
+.field-select {
+  display: flex;
+  flex-direction: column;
+}
+
+.mapping-select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  background: white;
+}
+
+.mapping-select:focus {
+  outline: none;
+  border-color: #2196F3;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 2px solid #eee;
+}
+
+@media (max-width: 768px) {
+  .mapping-row,
+  .mapping-header {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  
+  .arrow {
+    transform: rotate(90deg);
+  }
+}
+</style>
+
+<% 
+def detect_field_name(header)
+  header_lower = header.to_s.downcase
+  
+  return 'name' if header_lower.match?(/name|item/)
+  return 'brand' if header_lower.match?(/brand|manufacturer|maker/)
+  return 'model' if header_lower.match?(/model|version/)
+  return 'weight' if header_lower.match?(/weight|mass|kg|kilogram/)
+  return 'gear_category_id' if header_lower.match?(/category|type|class/)
+  return 'notes' if header_lower.match?(/note|description|comment|detail/)
+  
+  'skip'
+end
+%>
