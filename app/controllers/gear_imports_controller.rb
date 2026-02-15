@@ -151,14 +151,20 @@ class GearImportsController < ApplicationController
 
   def open_spreadsheet(file)
     require 'roo'
+    require 'roo-xls'
     
-    case File.extname(file.original_filename)
+    extension = File.extname(file.original_filename)
+    
+    case extension
     when '.csv'
-      Roo::CSV.new(file.path)
+      klass = Object.const_get('Roo::CSV')
+      klass.new(file.path)
     when '.xls'
-      Roo::Excel.new(file.path)
+      klass = Object.const_get('Roo::Excel')
+      klass.new(file.path)
     when '.xlsx'
-      Roo::Excelx.new(file.path)
+      klass = Object.const_get('Roo::Excelx')
+      klass.new(file.path)
     else
       raise "Unknown file type: #{file.original_filename}"
     end
