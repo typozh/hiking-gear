@@ -7,32 +7,61 @@ class TripGearsController < ApplicationController
   def create
     @trip_gear = @trip.trip_gears.build(trip_gear_params)
 
-    if @trip_gear.save
-      flash[:notice] = 'Gear added to trip'
-      redirect_to @trip
-    else
-      flash[:alert] = 'Could not add gear to trip'
-      redirect_to @trip
+    respond_to do |format|
+      if @trip_gear.save
+        format.html do
+          flash[:notice] = 'Gear added to trip'
+          redirect_to @trip
+        end
+        format.json { render json: { success: true, trip_gear: @trip_gear }, status: :created }
+      else
+        format.html do
+          flash[:alert] = 'Could not add gear to trip'
+          redirect_to @trip
+        end
+        format.json { render json: { error: @trip_gear.errors.full_messages.join(', ') }, status: :unprocessable_entity }
+      end
     end
   end
 
   def update
     @trip_gear = @trip.trip_gears.find(params[:id])
 
-    if @trip_gear.update(trip_gear_params)
-      flash[:notice] = 'Gear updated'
-      redirect_to @trip
-    else
-      flash[:alert] = 'Could not update gear'
-      redirect_to @trip
+    respond_to do |format|
+      if @trip_gear.update(trip_gear_params)
+        format.html do
+          flash[:notice] = 'Gear updated'
+          redirect_to @trip
+        end
+        format.json { render json: { success: true, trip_gear: @trip_gear }, status: :ok }
+      else
+        format.html do
+          flash[:alert] = 'Could not update gear'
+          redirect_to @trip
+        end
+        format.json { render json: { error: @trip_gear.errors.full_messages.join(', ') }, status: :unprocessable_entity }
+      end
     end
   end
 
   def destroy
     @trip_gear = @trip.trip_gears.find(params[:id])
-    @trip_gear.destroy
-    flash[:notice] = 'Gear removed from trip'
-    redirect_to @trip
+    
+    respond_to do |format|
+      if @trip_gear.destroy
+        format.html do
+          flash[:notice] = 'Gear removed from trip'
+          redirect_to @trip
+        end
+        format.json { render json: { success: true }, status: :ok }
+      else
+        format.html do
+          flash[:alert] = 'Could not remove gear'
+          redirect_to @trip
+        end
+        format.json { render json: { error: 'Failed to remove gear' }, status: :unprocessable_entity }
+      end
+    end
   end
 
   private

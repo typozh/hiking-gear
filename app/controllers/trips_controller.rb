@@ -10,8 +10,8 @@ class TripsController < ApplicationController
   end
 
   def show
-    @trip_gears = @trip.trip_gears.includes(:gear_item)
-    @available_gear = current_user.gear_items.where.not(id: @trip.gear_items.pluck(:id))
+    @trip_gears = @trip.trip_gears.includes(gear_item: :gear_category)
+    @available_gear = current_user.gear_items.includes(:gear_category).where.not(id: @trip.gear_items.pluck(:id))
   end
 
   def new
