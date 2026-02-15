@@ -3,6 +3,14 @@ class GearImportsController < ApplicationController
 
   def new
     # Show upload form
+    # Check if roo gem is available
+    begin
+      require 'roo'
+      @roo_available = true
+    rescue LoadError
+      @roo_available = false
+      flash.now[:warning] = "Import feature requires additional gems. Please run 'bundle install' on the server to enable file imports."
+    end
   end
 
   def create
@@ -15,6 +23,9 @@ class GearImportsController < ApplicationController
     end
 
     begin
+      # Check if roo gem is available
+      require 'roo'
+      
       # Parse file to extract headers and preview data
       spreadsheet = open_spreadsheet(uploaded_file)
       headers = spreadsheet.row(1)
@@ -25,6 +36,9 @@ class GearImportsController < ApplicationController
       session[:import_filename] = uploaded_file.original_filename
       
       redirect_to map_gear_imports_path
+    rescue LoadError
+      flash[:error] = "Import feature requires additional gems. Please run 'bundle install' on the server."
+      redirect_to new_gear_import_path
     rescue => e
       flash[:error] = "Error reading file: #{e.message}"
       redirect_to new_gear_import_path
@@ -136,6 +150,8 @@ class GearImportsController < ApplicationController
   private
 
   def open_spreadsheet(file)
+    require 'roo'
+    
     case File.extname(file.original_filename)
     when '.csv'
       Roo::CSV.new(file.path)
