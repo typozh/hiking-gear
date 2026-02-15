@@ -1,0 +1,103 @@
+<div class="trip-show">
+  <div class="page-header">
+    <div>
+      <h1><%= @trip.name %></h1>
+      <p class="trip-meta">
+        📍 <%= @trip.location %> | 
+        📅 <%= @trip.start_date.strftime('%B %d, %Y') %> - <%= @trip.end_date&.strftime('%B %d, %Y') || 'TBD' %>
+        (<%= @trip.duration_days %> days)
+      </p>
+    </div>
+    <div class="header-actions">
+      <%= link_to 'Edit', edit_trip_path(@trip), class: 'btn-secondary' %>
+      <%= button_to 'Delete', @trip, method: :delete, data: { confirm: 'Are you sure?' }, class: 'btn-danger' %>
+    </div>
+  </div>
+
+  <% if @trip.description.present? %>
+    <div class="trip-description">
+      <p><%= @trip.description %></p>
+    </div>
+  <% end %>
+
+  <div class="trip-stats">
+    <div class="stat-card">
+      <h3>⚖️ Total Weight</h3>
+      <p class="stat-number"><%= @trip.total_weight.round(2) %>kg</p>
+      <% if @trip.target_weight_kg %>
+        <p class="stat-subtitle">Target: <%= @trip.target_weight_kg %>kg</p>
+      <% end %>
+    </div>
+    
+    <div class="stat-card">
+      <h3>📦 Total Items</h3>
+      <p class="stat-number"><%= @trip.total_items_count %></p>
+    </div>
+    
+    <div class="stat-card">
+      <h3>📊 Status</h3>
+      <p class="stat-number"><%= @trip.status&.titleize || 'Planning' %></p>
+    </div>
+  </div>
+
+  <div class="trip-gear-section">
+    <h2>Gear List</h2>
+    
+    <% if @trip_gears.any? %>
+      <table class="gear-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Category</th>
+            <th>Qty</th>
+            <th>Weight (each)</th>
+            <th>Total Weight</th>
+            <th>Packed?</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @trip_gears.each do |trip_gear| %>
+            <tr>
+              <td><strong><%= trip_gear.gear_item.name %></strong></td>
+              <td><%= trip_gear.gear_item.gear_category&.name || '-' %></td>
+              <td><%= trip_gear.quantity %></td>
+              <td><%= (trip_gear.gear_item.weight * 1000).round %>g</td>
+              <td><strong><%= (trip_gear.total_weight * 1000).round %>g</strong></td>
+              <td>
+                <%= trip_gear.packed ? '✅' : '⬜' %>
+              </td>
+              <td>
+                <%= button_to 'Remove', trip_trip_gear_path(@trip, trip_gear), 
+                    method: :delete, 
+                    data: { confirm: 'Remove this gear?' },
+                    class: 'btn-small btn-danger' %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <p class="empty-state">No gear added yet.</p>
+    <% end %>
+  </div>
+
+  <div class="add-gear-section">
+    <h3>Add Gear to Trip</h3>
+    <%= form_with model: [@trip, TripGear.new], local: true do |f| %>
+      <div class="form-inline">
+        <%= f.collection_select :gear_item_id, @available_gear, :id, :name, 
+            { prompt: 'Select gear item...' }, 
+            { class: 'form-control' } %>
+        
+        <%= f.number_field :quantity, value: 1, min: 1, class: 'form-control-small' %>
+        
+        <%= f.submit 'Add to Trip', class: 'btn-primary' %>
+      </div>
+    <% end %>
+    
+    <% if @available_gear.empty? %>
+      <p><%= link_to 'Add more gear to your inventory', new_gear_item_path %></p>
+    <% end %>
+  </div>
+</div>

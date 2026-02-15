@@ -1,0 +1,68 @@
+<div class="gear-show">
+  <div class="page-header">
+    <h1><%= @gear_item.name %></h1>
+    <div class="header-actions">
+      <%= link_to 'Edit', edit_gear_item_path(@gear_item), class: 'btn-secondary' %>
+      <%= button_to 'Delete', @gear_item, method: :delete, 
+          data: { confirm: 'Are you sure?' }, class: 'btn-danger' %>
+    </div>
+  </div>
+
+  <div class="gear-details">
+    <div class="detail-group">
+      <h3>Details</h3>
+      <dl>
+        <dt>Category:</dt>
+        <dd><%= @gear_item.gear_category&.name || 'Uncategorized' %></dd>
+        
+        <dt>Weight (per item):</dt>
+        <dd><strong><%= (@gear_item.weight * 1000).round %>g</strong></dd>
+        
+        <dt>Quantity:</dt>
+        <dd><%= @gear_item.quantity %></dd>
+        
+        <dt>Total Weight:</dt>
+        <dd><strong><%= (@gear_item.total_weight * 1000).round %>g</strong></dd>
+        
+        <% if @gear_item.brand.present? %>
+          <dt>Brand:</dt>
+          <dd><%= @gear_item.brand %></dd>
+        <% end %>
+        
+        <% if @gear_item.price.present? %>
+          <dt>Price:</dt>
+          <dd>$<%= number_with_precision(@gear_item.price, precision: 2) %></dd>
+        <% end %>
+        
+        <dt>Type:</dt>
+        <dd><%= @gear_item.consumable ? 'Consumable' : 'Non-consumable' %></dd>
+      </dl>
+    </div>
+
+    <% if @gear_item.description.present? %>
+      <div class="detail-group">
+        <h3>Description</h3>
+        <p><%= @gear_item.description %></p>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="gear-usage">
+    <h2>Used in Trips (<%= @trips_using_gear.count %>)</h2>
+    
+    <% if @trips_using_gear.any? %>
+      <ul class="trip-list">
+        <% @trips_using_gear.each do |trip| %>
+          <li>
+            <%= link_to trip.name, trip %>
+            - <%= trip.start_date.strftime('%b %d, %Y') %>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="empty-state">This gear item hasn't been used in any trips yet.</p>
+    <% end %>
+  </div>
+
+  <%= link_to 'Back to Gear', gear_items_path, class: 'btn-secondary' %>
+</div>

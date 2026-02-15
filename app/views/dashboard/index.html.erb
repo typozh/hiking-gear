@@ -1,0 +1,63 @@
+<div class="dashboard">
+  <h1>Welcome back, <%= current_user.name || current_user.email %>!</h1>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <h3>📊 Total Gear Items</h3>
+      <p class="stat-number"><%= @total_gear_count %></p>
+    </div>
+    
+    <div class="stat-card">
+      <h3>⚖️ Total Gear Weight</h3>
+      <p class="stat-number"><%= number_to_human(@total_gear_weight, units: :kg, precision: 2) %></p>
+    </div>
+    
+    <div class="stat-card">
+      <h3>🗓️ Upcoming Trips</h3>
+      <p class="stat-number"><%= @upcoming_trips.count %></p>
+    </div>
+  </div>
+
+  <div class="dashboard-section">
+    <div class="section-header">
+      <h2>Upcoming Trips</h2>
+      <%= link_to 'New Trip', new_trip_path, class: 'btn-primary' %>
+    </div>
+
+    <% if @upcoming_trips.any? %>
+      <div class="trip-list">
+        <% @upcoming_trips.each do |trip| %>
+          <%= link_to trip, class: 'trip-card' do %>
+            <h3><%= trip.name %></h3>
+            <p>📍 <%= trip.location %></p>
+            <p>📅 <%= trip.start_date.strftime('%b %d, %Y') %> - <%= trip.end_date&.strftime('%b %d, %Y') || 'TBD' %></p>
+            <p>⚖️ <%= trip.total_weight.round(2) %>kg / <%= trip.target_weight_kg %>kg</p>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="empty-state">No upcoming trips. <%= link_to 'Plan your first trip!', new_trip_path %></p>
+    <% end %>
+  </div>
+
+  <div class="dashboard-section">
+    <div class="section-header">
+      <h2>Recent Gear</h2>
+      <%= link_to 'View All Gear', gear_items_path, class: 'btn-secondary' %>
+    </div>
+
+    <% if @recent_gear.any? %>
+      <div class="gear-list">
+        <% @recent_gear.each do |gear| %>
+          <%= link_to gear, class: 'gear-card' do %>
+            <h4><%= gear.name %></h4>
+            <p><%= gear.gear_category&.name || 'Uncategorized' %></p>
+            <p class="gear-weight"><%= (gear.weight * 1000).round %>g</p>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="empty-state">No gear items yet. <%= link_to 'Add your first gear item!', new_gear_item_path %></p>
+    <% end %>
+  </div>
+</div>

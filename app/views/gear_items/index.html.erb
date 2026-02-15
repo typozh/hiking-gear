@@ -1,0 +1,47 @@
+<div class="gear-index">
+  <div class="page-header">
+    <h1>My Gear</h1>
+    <%= link_to 'Add New Gear', new_gear_item_path, class: 'btn-primary' %>
+  </div>
+
+  <div class="filters">
+    <%= form_with url: gear_items_path, method: :get, local: true do %>
+      <%= select_tag :category_id, 
+          options_from_collection_for_select(@categories, :id, :name, params[:category_id]),
+          { prompt: 'All Categories', onchange: 'this.form.submit()' } %>
+      
+      <%= select_tag :sort,
+          options_for_select([['Name', 'name'], ['Heaviest First', 'heaviest'], ['Lightest First', 'lightest']], params[:sort]),
+          { onchange: 'this.form.submit()' } %>
+    <% end %>
+  </div>
+
+  <% if @gear_items.any? %>
+    <div class="gear-summary">
+      <p><strong>Total items:</strong> <%= @gear_items.count %></p>
+      <p><strong>Total weight:</strong> <%= (@gear_items.sum('weight * quantity') * 1000).round %>g</p>
+    </div>
+
+    <div class="gear-grid">
+      <% @gear_items.each do |gear| %>
+        <%= link_to gear, class: 'gear-card' do %>
+          <div class="gear-header">
+            <h3><%= gear.name %></h3>
+            <span class="gear-category"><%= gear.gear_category&.name || 'Uncategorized' %></span>
+          </div>
+          <p class="gear-weight"><strong><%= (gear.weight * 1000).round %>g</strong> × <%= gear.quantity %></p>
+          <p class="gear-total-weight">Total: <%= (gear.total_weight * 1000).round %>g</p>
+          <% if gear.brand.present? %>
+            <p class="gear-brand"><%= gear.brand %></p>
+          <% end %>
+          <p class="gear-trips"><%= pluralize(gear.used_in_trips_count, 'trip') %></p>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="empty-state">
+      <p>No gear items yet. Start building your gear inventory!</p>
+      <%= link_to 'Add Your First Gear Item', new_gear_item_path, class: 'btn-primary' %>
+    </div>
+  <% end %>
+</div>
