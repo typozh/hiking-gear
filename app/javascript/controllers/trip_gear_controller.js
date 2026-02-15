@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 
-export default class extends Controller {
+export default class TripGearController extends Controller {
   static targets = ["availableItem", "tripItem", "tripList", "totalWeight", "totalItems"]
 
   connect() {
@@ -138,3 +138,4 @@ export default class extends Controller {
     }
   }
 }
+
