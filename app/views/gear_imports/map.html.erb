@@ -77,6 +77,18 @@
                 class: 'mapping-select',
                 data: { field: field_key }
             %>
+            <% if field_key == 'weight' %>
+              <label style="margin-top:0.5rem; font-size:0.85rem; color:#555;">Unit in your file:</label>
+              <%= select_tag "weight_unit",
+                  options_for_select([
+                    ['kg (kilograms)', 'kg'],
+                    ['g (grams)',      'g'],
+                    ['lbs (pounds)',   'lbs'],
+                    ['oz (ounces)',    'oz']
+                  ], 'kg'),
+                  class: 'mapping-select'
+              %>
+            <% end %>
           </div>
         </div>
       <% end %>

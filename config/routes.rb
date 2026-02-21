@@ -26,12 +26,15 @@ Rails.application.routes.draw do
   resources :gear_items
 
   # Gear imports
-  resources :gear_imports, only: [:new, :create] do
+  resources :gear_imports, only: [:new, :create, :index] do
     collection do
       get  :map
       post :import_data
       get  :resolve_categories
       post :do_import
+    end
+    member do
+      delete :revert
     end
   end
 

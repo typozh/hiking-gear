@@ -4,6 +4,7 @@
 class GearItem < ApplicationRecord
   belongs_to :user
   belongs_to :gear_category, optional: true
+  belongs_to :gear_import, optional: true
   has_many :trip_gears, dependent: :destroy
   has_many :trips, through: :trip_gears
 
