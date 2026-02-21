@@ -51,33 +51,32 @@
   <%= form_with url: process_gear_imports_path, method: :post, local: true, class: "mapping-form" do |f| %>
     <div class="mapping-grid">
       <div class="mapping-header">
+        <div>Gear Field</div>
+        <div>←</div>
         <div>Your Column</div>
-        <div>→</div>
-        <div>Maps To</div>
       </div>
 
-      <% @headers.each_with_index do |header, index| %>
+      <% @gear_fields.each do |field_key, field_label| %>
         <div class="mapping-row">
           <div class="column-name">
-            <strong><%= header %></strong>
-            <span class="sample-value">
-              e.g., <%= @preview_rows[1]&.dig(index)&.to_s&.truncate(30) || 'N/A' %>
-            </span>
+            <strong><%= field_label %></strong>
+            <% if field_key == 'name' %>
+              <span class="sample-value required-badge">required</span>
+            <% end %>
           </div>
           
-          <div class="arrow">→</div>
+          <div class="arrow">←</div>
           
           <div class="field-select">
-            <%= select_tag "mapping[#{detect_field_name(header)}]", 
+            <%= select_tag "mapping[#{field_key}]",
                 options_for_select(
-                  [['Skip this column', 'skip']] + 
-                  @gear_fields.map { |key, label| [label, key] },
-                  detect_field_name(header)
+                  [['— skip / not in file —', 'skip']] +
+                  @headers.map { |h| [h, h] },
+                  detect_field_name_for(@headers, field_key)
                 ),
                 class: 'mapping-select',
-                data: { column: header }
+                data: { field: field_key }
             %>
-            <%= hidden_field_tag "mapping_column_#{index}", header %>
           </div>
         </div>
       <% end %>
@@ -94,39 +93,12 @@
 <% content_for :head do %>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Auto-detect and suggest mappings based on column names
-  const mappingSelects = document.querySelectorAll('.mapping-select');
-  
-  mappingSelects.forEach(select => {
-    const columnName = select.dataset.column.toLowerCase();
-    let suggestedValue = 'skip';
-    
-    // Smart matching
-    if (columnName.includes('name') || columnName.includes('item')) {
-      suggestedValue = 'name';
-    } else if (columnName.includes('brand') || columnName.includes('manufacturer')) {
-      suggestedValue = 'brand';
-    } else if (columnName.includes('model')) {
-      suggestedValue = 'model';
-    } else if (columnName.includes('weight') || columnName.includes('mass') || columnName.includes('kg')) {
-      suggestedValue = 'weight';
-    } else if (columnName.includes('category') || columnName.includes('type')) {
-      suggestedValue = 'gear_category_id';
-    } else if (columnName.includes('note') || columnName.includes('description') || columnName.includes('comment')) {
-      suggestedValue = 'notes';
-    }
-    
-    select.value = suggestedValue;
-  });
-  
   // Validate that name is mapped before submission
   document.querySelector('.mapping-form').addEventListener('submit', function(e) {
-    const mappingSelects = Array.from(document.querySelectorAll('.mapping-select'));
-    const hasMappedName = mappingSelects.some(select => select.value === 'name');
-    
-    if (!hasMappedName) {
+    const nameSelect = document.querySelector('[data-field="name"]');
+    if (!nameSelect || nameSelect.value === 'skip') {
       e.preventDefault();
-      alert('Please map at least one column to the "Name" field. Name is required for all gear items.');
+      alert('Please map a column to the "Name" field. Name is required for all gear items.');
       return false;
     }
   });
@@ -265,6 +237,16 @@ document.addEventListener('DOMContentLoaded', function() {
   font-size: 0.85rem;
   color: #666;
   font-style: italic;
+}
+
+.required-badge {
+  font-size: 0.8rem;
+  color: white;
+  background: #e53935;
+  padding: 0.1rem 0.5rem;
+  border-radius: 10px;
+  font-style: normal;
+  font-weight: 600;
 }
 
 .arrow {

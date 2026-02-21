@@ -82,19 +82,20 @@ class GearImportsController < ApplicationController
     
     headers = import_data[0]
     rows = import_data[1..-1] # Skip header row
-    
-    # Reverse mapping: column_index => gear_field
+
+    # Check if name field is mapped
+    unless mapping['name'].present? && mapping['name'] != 'skip'
+      flash[:error] = "Name field is required. Please map a column to the Name field."
+      redirect_to map_gear_imports_path and return
+    end
+
+    # Build column_index => gear_field lookup
+    # mapping is { gear_field => column_header_name }
     column_to_field = {}
     mapping.each do |gear_field, column_name|
       next if column_name.blank? || column_name == 'skip'
       column_index = headers.index(column_name)
       column_to_field[column_index] = gear_field if column_index
-    end
-    
-    # Check if name field is mapped
-    unless mapping['name'].present? && mapping['name'] != 'skip'
-      flash[:error] = "Name field is required. Please map a column to the Name field."
-      redirect_to map_gear_imports_path and return
     end
     
     # Import gear items
