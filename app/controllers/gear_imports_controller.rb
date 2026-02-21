@@ -1,6 +1,4 @@
 class GearImportsController < ApplicationController
-  before_action :require_login
-
   def new
     # Show upload form
   end
@@ -165,14 +163,7 @@ class GearImportsController < ApplicationController
 
   def find_category(value)
     # Try to find category by name first, then by ID
-    GearCategory.find_by(name: value.to_s.strip) || 
-    GearCategory.find_by(id: value.to_i) if value.to_i.to_s == value.to_s
-  end
-
-  def require_login
-    unless logged_in?
-      flash[:error] = "You must be logged in to import gear"
-      redirect_to login_path
-    end
+    GearCategory.find_by(name: value.to_s.strip) ||
+      (GearCategory.find_by(id: value.to_i) if value.to_i.to_s == value.to_s.strip)
   end
 end
