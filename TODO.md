@@ -6,19 +6,19 @@ Improvements planned for the gear list and related features.
 
 ## Gear List Views & Filters
 
-- [ ] **Table view** – dense, sortable table (name, brand, weight, category, trips used)
-- [ ] **Card / grid view** – visual card layout, switchable with table view
-- [ ] **Filter bar** – filter by category, weight range, brand, trips used / not used
-- [ ] **Sort controls** – sort by name, weight, category, date added
-- [ ] **Search** – free-text search across name, brand, model, notes
-- [ ] **"Unused gear" view** – items not assigned to any trip
+- [x] **Table view** – dense, sortable table (name, brand, weight, category, trips used)
+- [x] **Card / grid view** – visual card layout, switchable with table view
+- [x] **Filter bar** – filter by category, weight range, brand, trips used / not used
+- [x] **Sort controls** – sort by name, weight, category, date added
+- [x] **Search** – free-text search across name, brand, model, notes
+- [x] **"Unused gear" view** – items not assigned to any trip
 
 ## Bulk Edit
 
-- [ ] **Bulk select** – checkboxes to select multiple items
-- [ ] **Bulk category assign** – change category for selected items
-- [ ] **Bulk delete** – delete multiple items at once
-- [ ] **Bulk export** – download selected items as CSV/XLSX
+- [x] **Bulk select** – checkboxes to select multiple items
+- [x] **Bulk category assign** – change category for selected items
+- [x] **Bulk delete** – delete multiple items at once
+- [x] **Bulk export** – download selected items as CSV/XLSX
 
 ## Import Improvements
 

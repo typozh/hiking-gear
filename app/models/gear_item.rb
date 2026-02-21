@@ -15,6 +15,10 @@ class GearItem < ApplicationRecord
   scope :by_category, ->(category_id) { where(gear_category_id: category_id) }
   scope :heaviest_first, -> { order(weight: :desc) }
   scope :lightest_first, -> { order(weight: :asc) }
+  scope :by_date,        -> { order(created_at: :desc) }
+  scope :unused,         -> { left_outer_joins(:trip_gears).where(trip_gears: { id: nil }) }
+  scope :search,         ->(q) { where('LOWER(name) LIKE :q OR LOWER(brand) LIKE :q OR LOWER(description) LIKE :q', q: "%#{q.downcase}%") }
+  scope :weight_between, ->(min, max) { where(weight: (min.to_f)..(max.to_f)) }
 
   def total_weight
     weight * quantity

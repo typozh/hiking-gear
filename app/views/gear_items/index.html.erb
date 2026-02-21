@@ -2,49 +2,296 @@
   <div class="page-header">
     <h1>My Gear</h1>
     <div class="header-actions">
-      <%= link_to '📥 Import Gear', new_gear_import_path, class: 'btn-secondary' %>
-      <%= link_to 'Add New Gear', new_gear_item_path, class: 'btn-primary' %>
+      <%= link_to '⬇️ Export CSV', export_gear_items_path, class: 'btn-secondary' %>
+      <%= link_to '📥 Import', new_gear_import_path, class: 'btn-secondary' %>
+      <%= link_to '+ Add Gear', new_gear_item_path, class: 'btn-primary' %>
     </div>
   </div>
 
-  <div class="filters">
-    <%= form_with url: gear_items_path, method: :get, local: true do %>
-      <%= select_tag :category_id, 
+  <%# ── Filter bar ──────────────────────────────────────────── %>
+  <%= form_with url: gear_items_path, method: :get, local: true, class: 'filter-bar', id: 'filter-form' do %>
+    <input type="hidden" name="view" value="<%= @view_mode %>">
+
+    <div class="filter-group filter-search">
+      <%= text_field_tag :q, params[:q], placeholder: '🔍 Search name, brand…', class: 'filter-input' %>
+    </div>
+
+    <div class="filter-group">
+      <%= select_tag :category_id,
           options_from_collection_for_select(@categories, :id, :name, params[:category_id]),
-          { prompt: 'All Categories', onchange: 'this.form.submit()' } %>
-      
+          prompt: 'All Categories', class: 'filter-select', onchange: 'this.form.submit()' %>
+    </div>
+
+    <div class="filter-group">
+      <%= select_tag :brand,
+          options_for_select([['All Brands', '']] + @brands.map { |b| [b, b] }, params[:brand]),
+          class: 'filter-select', onchange: 'this.form.submit()' %>
+    </div>
+
+    <div class="filter-group filter-weight">
+      <%= number_field_tag :weight_min, params[:weight_min], placeholder: 'Min g', class: 'filter-input filter-input--sm', min: 0 %>
+      <span>–</span>
+      <%= number_field_tag :weight_max, params[:weight_max], placeholder: 'Max g', class: 'filter-input filter-input--sm', min: 0 %>
+      <small style="color:#888">g</small>
+    </div>
+
+    <div class="filter-group filter-toggle-group">
+      <label class="toggle-label">
+        <%= check_box_tag :unused_only, '1', params[:unused_only] == '1', onchange: 'this.form.submit()' %>
+        Unused only
+      </label>
+    </div>
+
+    <div class="filter-group">
       <%= select_tag :sort,
-          options_for_select([['Name', 'name'], ['Heaviest First', 'heaviest'], ['Lightest First', 'lightest']], params[:sort]),
-          { onchange: 'this.form.submit()' } %>
+          options_for_select([
+            ['Name A–Z',       'name'],
+            ['Heaviest first', 'heaviest'],
+            ['Lightest first', 'lightest'],
+            ['Category',       'category'],
+            ['Newest first',   'newest']
+          ], params[:sort] || 'name'),
+          class: 'filter-select', onchange: 'this.form.submit()' %>
+    </div>
+
+    <%= submit_tag '🔍', class: 'btn-secondary btn-search' %>
+
+    <% if [params[:q], params[:category_id], params[:brand], params[:weight_min], params[:weight_max], params[:unused_only]].any?(&:present?) %>
+      <%= link_to '✕ Clear', gear_items_path(view: @view_mode, sort: params[:sort]), class: 'btn-clear' %>
     <% end %>
+  <% end %>
+
+  <%# ── View toggle ──────────────────────────────────────────── %>
+  <div class="view-controls">
+    <div class="gear-summary">
+      <strong><%= @gear_items.count %></strong> item(s) ·
+      <strong><%= (@gear_items.sum { |g| g.weight * g.quantity } * 1000).round %>g</strong> total
+    </div>
+    <div class="view-toggle">
+      <%= link_to '⊞ Grid',  gear_items_path(request.query_parameters.merge(view: 'grid')),
+          class: "view-btn #{@view_mode == 'grid'  ? 'active' : ''}" %>
+      <%= link_to '☰ Table', gear_items_path(request.query_parameters.merge(view: 'table')),
+          class: "view-btn #{@view_mode == 'table' ? 'active' : ''}" %>
+    </div>
   </div>
 
   <% if @gear_items.any? %>
-    <div class="gear-summary">
-      <p><strong>Total items:</strong> <%= @gear_items.count %></p>
-      <p><strong>Total weight:</strong> <%= (@gear_items.sum('weight * quantity') * 1000).round %>g</p>
-    </div>
+    <%# ── Bulk action form ────────────────────────────────────── %>
+    <%= form_tag bulk_destroy_gear_items_path, method: :post, id: 'bulk-form' do %>
+      <div class="bulk-bar" id="bulk-bar" style="display:none">
+        <span id="bulk-count">0 selected</span>
+        <div class="bulk-actions">
+          <%= select_tag :bulk_category_id, options_from_collection_for_select(@categories, :id, :name),
+              prompt: '— Set category —', class: 'filter-select' %>
+          <button type="button" class="btn-secondary btn-sm" onclick="bulkAction('update')">Apply Category</button>
+          <button type="button" class="btn-danger btn-sm"   onclick="bulkAction('destroy')">🗑 Delete selected</button>
+        </div>
+        <button type="button" class="btn-clear" onclick="clearSelection()">✕ Deselect all</button>
+      </div>
+      <input type="hidden" name="_bulk_action" id="bulk-action-field" value="">
 
-    <div class="gear-grid">
-      <% @gear_items.each do |gear| %>
-        <%= link_to gear, class: 'gear-card' do %>
-          <div class="gear-header">
-            <h3><%= gear.name %></h3>
-            <span class="gear-category"><%= gear.gear_category&.name || 'Uncategorized' %></span>
-          </div>
-          <p class="gear-weight"><strong><%= (gear.weight * 1000).round %>g</strong> × <%= gear.quantity %></p>
-          <p class="gear-total-weight">Total: <%= (gear.total_weight * 1000).round %>g</p>
-          <% if gear.brand.present? %>
-            <p class="gear-brand"><%= gear.brand %></p>
+      <% if @view_mode == 'table' %>
+        <%# ── Table view ───────────────────────────────────────── %>
+        <div class="table-scroll">
+          <table class="gear-table">
+            <thead>
+              <tr>
+                <th class="col-check"><input type="checkbox" id="select-all" title="Select all"></th>
+                <th>Name</th>
+                <th>Brand</th>
+                <th>Category</th>
+                <th class="col-num">Weight (g)</th>
+                <th class="col-num">Qty</th>
+                <th class="col-num">Total (g)</th>
+                <th class="col-num">Trips</th>
+                <th class="col-actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @gear_items.each do |gear| %>
+                <tr class="gear-row">
+                  <td class="col-check">
+                    <input type="checkbox" name="item_ids[]" value="<%= gear.id %>" class="item-checkbox">
+                  </td>
+                  <td><%= link_to gear.name, gear, class: 'item-link' %></td>
+                  <td><%= gear.brand %></td>
+                  <td>
+                    <span class="category-badge">
+                      <%= [gear.gear_category&.icon, gear.gear_category&.name].compact.join(' ').presence || '—' %>
+                    </span>
+                  </td>
+                  <td class="col-num"><%= gear.weight_per_unit_grams %></td>
+                  <td class="col-num"><%= gear.quantity %></td>
+                  <td class="col-num"><%= (gear.total_weight * 1000).round %></td>
+                  <td class="col-num"><%= gear.used_in_trips_count %></td>
+                  <td class="col-actions">
+                    <%= link_to 'Edit', edit_gear_item_path(gear), class: 'btn-sm btn-secondary' %>
+                    <%= button_to '🗑', gear_item_path(gear), method: :delete,
+                        class: 'btn-sm btn-danger',
+                        data: { confirm: "Delete #{gear.name}?" } %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+
+      <% else %>
+        <%# ── Grid / card view ────────────────────────────────── %>
+        <div class="gear-grid">
+          <% @gear_items.each do |gear| %>
+            <div class="gear-card-wrap">
+              <label class="card-checkbox-label">
+                <input type="checkbox" name="item_ids[]" value="<%= gear.id %>" class="item-checkbox card-checkbox">
+              </label>
+              <%= link_to gear, class: 'gear-card' do %>
+                <div class="gear-header">
+                  <h3><%= gear.name %></h3>
+                  <span class="gear-category"><%= [gear.gear_category&.icon, gear.gear_category&.name].compact.join(' ').presence || 'Uncategorized' %></span>
+                </div>
+                <% if gear.brand.present? %>
+                  <p class="gear-brand"><%= gear.brand %></p>
+                <% end %>
+                <p class="gear-weight"><strong><%= gear.weight_per_unit_grams %>g</strong> × <%= gear.quantity %></p>
+                <p class="gear-total-weight">Total: <%= (gear.total_weight * 1000).round %>g</p>
+                <p class="gear-trips"><%= pluralize(gear.used_in_trips_count, 'trip') %></p>
+              <% end %>
+            </div>
           <% end %>
-          <p class="gear-trips"><%= pluralize(gear.used_in_trips_count, 'trip') %></p>
-        <% end %>
+        </div>
       <% end %>
-    </div>
+    <% end %>
+
   <% else %>
     <div class="empty-state">
-      <p>No gear items yet. Start building your gear inventory!</p>
-      <%= link_to 'Add Your First Gear Item', new_gear_item_path, class: 'btn-primary' %>
+      <p>No gear items match your filters.</p>
+      <%= link_to 'Clear filters', gear_items_path, class: 'btn-secondary' %>
+      <%= link_to 'Add gear', new_gear_item_path, class: 'btn-primary' %>
     </div>
   <% end %>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const bar       = document.getElementById('bulk-bar');
+  const countEl   = document.getElementById('bulk-count');
+  const selectAll = document.getElementById('select-all');
+
+  function updateBar() {
+    const checked = document.querySelectorAll('.item-checkbox:checked');
+    bar.style.display = checked.length > 0 ? 'flex' : 'none';
+    if (countEl) countEl.textContent = checked.length + ' selected';
+  }
+
+  document.querySelectorAll('.item-checkbox').forEach(cb => cb.addEventListener('change', updateBar));
+
+  if (selectAll) {
+    selectAll.addEventListener('change', function () {
+      document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = this.checked);
+      updateBar();
+    });
+  }
+});
+
+function clearSelection() {
+  document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = false);
+  const sa = document.getElementById('select-all');
+  if (sa) sa.checked = false;
+  document.getElementById('bulk-bar').style.display = 'none';
+}
+
+function bulkAction(action) {
+  const checked = document.querySelectorAll('.item-checkbox:checked');
+  if (checked.length === 0) { alert('Select at least one item first.'); return; }
+  const form = document.getElementById('bulk-form');
+  document.getElementById('bulk-action-field').value = action;
+  if (action === 'destroy') {
+    if (!confirm('Delete ' + checked.length + ' item(s)? This cannot be undone.')) return;
+    form.action = '<%= bulk_destroy_gear_items_path %>';
+  } else {
+    form.action = '<%= bulk_update_gear_items_path %>';
+  }
+  form.submit();
+}
+</script>
+
+<style>
+.filter-bar {
+  display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+  background: white; padding: 1rem; border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08); margin-bottom: 1rem;
+}
+.filter-group { display: flex; align-items: center; gap: 0.25rem; }
+.filter-search { flex: 1 1 200px; }
+.filter-weight { gap: 0.3rem; }
+.filter-input {
+  padding: 0.45rem 0.7rem; border: 1px solid #ddd; border-radius: 4px;
+  font-size: 0.9rem; width: 100%;
+}
+.filter-input--sm { width: 70px; }
+.filter-select {
+  padding: 0.45rem 0.7rem; border: 1px solid #ddd; border-radius: 4px;
+  font-size: 0.9rem; background: white;
+}
+.btn-search { padding: 0.45rem 0.9rem; }
+.btn-clear { background: none; border: none; color: #e53935; cursor: pointer; font-size: 0.9rem; text-decoration: none; }
+.toggle-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; cursor: pointer; }
+
+.view-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+.gear-summary { color: #555; font-size: 0.9rem; }
+.view-toggle { display: flex; gap: 0.25rem; }
+.view-btn {
+  padding: 0.35rem 0.75rem; border: 1px solid #ddd; border-radius: 4px;
+  text-decoration: none; color: #555; font-size: 0.9rem; background: white;
+}
+.view-btn.active { background: #1976d2; color: white; border-color: #1976d2; }
+
+.bulk-bar {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  background: #fff8e1; border: 1px solid #f9a825;
+  padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 0.75rem;
+}
+.bulk-actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.btn-sm { padding: 0.3rem 0.7rem; font-size: 0.85rem; border-radius: 4px; cursor: pointer; border: none; }
+.btn-danger { background: #e53935; color: white; }
+.btn-danger:hover { background: #c62828; }
+
+.table-scroll { overflow-x: auto; }
+.gear-table {
+  width: 100%; border-collapse: collapse; background: white;
+  border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.08); font-size: 0.9rem;
+}
+.gear-table th, .gear-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #eee; }
+.gear-table th { background: #f5f5f5; font-weight: 600; white-space: nowrap; }
+.gear-table tr:last-child td { border-bottom: none; }
+.gear-table tr:hover td { background: #fafafa; }
+.col-check { width: 36px; }
+.col-num { text-align: right; }
+.col-actions { text-align: right; white-space: nowrap; }
+.item-link { color: #1976d2; text-decoration: none; font-weight: 500; }
+.item-link:hover { text-decoration: underline; }
+.category-badge { background: #f0f4ff; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem; white-space: nowrap; }
+
+.gear-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+.gear-card-wrap { position: relative; }
+.card-checkbox-label { position: absolute; top: 0.5rem; left: 0.5rem; z-index: 1; }
+.card-checkbox { width: 16px; height: 16px; cursor: pointer; }
+.gear-card {
+  display: block; background: white; border-radius: 8px; padding: 1rem 1rem 1rem 2rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08); text-decoration: none; color: inherit;
+  transition: box-shadow 0.2s; height: 100%;
+}
+.gear-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.gear-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.5rem; }
+.gear-header h3 { margin: 0; font-size: 1rem; }
+.gear-category { font-size: 0.75rem; background: #f0f4ff; padding: 0.2rem 0.5rem; border-radius: 12px; white-space: nowrap; }
+.gear-brand, .gear-weight, .gear-total-weight, .gear-trips { margin: 0.2rem 0; font-size: 0.85rem; color: #555; }
+.gear-weight { font-size: 0.95rem; color: #333; }
+
+.empty-state { text-align: center; padding: 3rem; background: white; border-radius: 8px; color: #666; }
+
+@media (max-width: 600px) {
+  .filter-bar { flex-direction: column; align-items: stretch; }
+  .view-controls { flex-direction: column; gap: 0.5rem; align-items: flex-start; }
+}
+</style>
