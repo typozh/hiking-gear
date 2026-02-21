@@ -4,6 +4,14 @@ Improvements planned for the gear list and related features.
 
 ---
 
+## 🐛 Bugs
+
+- [ ] **Bulk delete fails** – "Maybe you tried to change something you didn't have access to." error when deleting multiple gear items (likely CSRF token missing on the bulk destroy form)
+
+
+
+---
+
 ## Gear List Views & Filters
 
 - [x] **Table view** – dense, sortable table (name, brand, weight, category, trips used)

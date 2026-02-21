@@ -77,7 +77,7 @@
 
   <% if @gear_items.any? %>
     <%# ── Bulk action form ────────────────────────────────────── %>
-    <%= form_tag bulk_destroy_gear_items_path, method: :post, id: 'bulk-form' do %>
+    <%= form_tag bulk_destroy_gear_items_path, method: :post, id: 'bulk-form', data: { turbo: false } do %>
       <div class="bulk-bar" id="bulk-bar" style="display:none">
         <span id="bulk-count">0 selected</span>
         <div class="bulk-actions">
@@ -211,7 +211,7 @@ function bulkAction(action) {
   } else {
     form.action = '<%= bulk_update_gear_items_path %>';
   }
-  form.submit();
+  form.submit(); // data-turbo=false so plain POST with embedded authenticity_token
 }
 </script>
 
