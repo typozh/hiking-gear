@@ -6,7 +6,7 @@ Improvements planned for the gear list and related features.
 
 ## 🐛 Bugs
 
-- [ ] **Bulk delete fails** – "Maybe you tried to change something you didn't have access to." error when deleting multiple gear items (likely CSRF token missing on the bulk destroy form)
+- [x] **Bulk delete fails** – "Maybe you tried to change something you didn't have access to." error when deleting multiple gear items → fixed by adding `data-turbo="false"` to the bulk form
 
 
 
