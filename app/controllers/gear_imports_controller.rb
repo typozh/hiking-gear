@@ -15,16 +15,24 @@ class GearImportsController < ApplicationController
     begin
       # Check if roo gem is available
       require 'roo'
-      
-      # Parse file to extract headers and preview data
-      spreadsheet = open_spreadsheet(uploaded_file)
+
+      # Save the uploaded file to disk so we don't overflow the session cookie
+      import_dir = Rails.root.join('tmp', 'imports')
+      FileUtils.mkdir_p(import_dir)
+      ext = File.extname(uploaded_file.original_filename)
+      tmp_filename = "import_#{current_user.id}_#{Time.now.to_i}#{ext}"
+      tmp_path = import_dir.join(tmp_filename).to_s
+      FileUtils.cp(uploaded_file.tempfile.path, tmp_path)
+
+      # Parse file to extract headers only
+      spreadsheet = open_spreadsheet_path(tmp_path, ext)
       headers = spreadsheet.row(1)
-      
-      # Store file data in session for mapping step
+
+      # Store only the path and headers in the session (no bulk data in cookie)
+      session[:import_tmp_path] = tmp_path
       session[:import_headers] = headers
-      session[:import_data] = spreadsheet.to_a
       session[:import_filename] = uploaded_file.original_filename
-      
+
       redirect_to map_gear_imports_path
     rescue LoadError
       flash[:error] = "Import feature requires additional gems. Please run 'bundle install' on the server."
@@ -38,12 +46,23 @@ class GearImportsController < ApplicationController
   def map
     # Show column mapping form
     @headers = session[:import_headers]
-    @preview_rows = session[:import_data]&.take(6) # Header + 5 preview rows
     @filename = session[:import_filename]
-    
-    unless @headers
+    tmp_path = session[:import_tmp_path]
+
+    unless @headers && tmp_path && File.exist?(tmp_path)
       flash[:error] = "No file uploaded. Please upload a file first."
       redirect_to new_gear_import_path and return
+    end
+
+    # Build preview rows by re-reading the file (avoids session cookie overflow)
+    begin
+      require 'roo'
+      ext = File.extname(tmp_path)
+      spreadsheet = open_spreadsheet_path(tmp_path, ext)
+      @preview_rows = []
+      [spreadsheet.last_row, 6].min.times { |i| @preview_rows << spreadsheet.row(i + 1) }
+    rescue => e
+      @preview_rows = [@headers]
     end
     
     # Get available gear fields for mapping
@@ -63,15 +82,18 @@ class GearImportsController < ApplicationController
   def import_data
     # Process the import with user's column mapping
     mapping = params[:mapping] || {}
-    import_data = session[:import_data]
-    
-    unless import_data
+    tmp_path = session[:import_tmp_path]
+
+    unless tmp_path && File.exist?(tmp_path)
       flash[:error] = "Import session expired. Please upload the file again."
       redirect_to new_gear_import_path and return
     end
-    
-    headers = import_data[0]
-    rows = import_data[1..-1] # Skip header row
+
+    require 'roo'
+    ext = File.extname(tmp_path)
+    spreadsheet = open_spreadsheet_path(tmp_path, ext)
+    headers = spreadsheet.row(1)
+    rows = (2..spreadsheet.last_row).map { |i| spreadsheet.row(i) }
 
     # Check if name field is mapped
     unless mapping['name'].present? && mapping['name'] != 'skip'
@@ -123,9 +145,10 @@ class GearImportsController < ApplicationController
       end
     end
     
-    # Clear session data
+    # Clean up temp file and session data
+    File.delete(tmp_path) rescue nil
+    session.delete(:import_tmp_path)
     session.delete(:import_headers)
-    session.delete(:import_data)
     session.delete(:import_filename)
     
     if success_count > 0
@@ -140,24 +163,19 @@ class GearImportsController < ApplicationController
 
   private
 
-  def open_spreadsheet(file)
+  def open_spreadsheet_path(path, extension)
     require 'roo'
     require 'roo-xls'
-    
-    extension = File.extname(file.original_filename)
-    
-    case extension
+
+    case extension.downcase
     when '.csv'
-      klass = Object.const_get('Roo::CSV')
-      klass.new(file.path)
+      Roo::CSV.new(path)
     when '.xls'
-      klass = Object.const_get('Roo::Excel')
-      klass.new(file.path)
+      Roo::Excel.new(path)
     when '.xlsx'
-      klass = Object.const_get('Roo::Excelx')
-      klass.new(file.path)
+      Roo::Excelx.new(path)
     else
-      raise "Unknown file type: #{file.original_filename}"
+      raise "Unknown file type: #{extension}"
     end
   end
 
