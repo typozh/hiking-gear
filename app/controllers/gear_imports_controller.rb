@@ -89,7 +89,7 @@ class GearImportsController < ApplicationController
   end
 
   def import_data
-    # Process the import with user's column mapping
+    # Intermediate step: validate mapping, then check for unknown categories
     mapping = params[:mapping] || {}
     tmp_path = session[:import_tmp_path]
 
@@ -98,83 +98,147 @@ class GearImportsController < ApplicationController
       redirect_to new_gear_import_path and return
     end
 
-    require 'roo'
-    ext = File.extname(tmp_path)
-    spreadsheet = open_spreadsheet_path(tmp_path, ext)
-    header_row = (session[:import_header_row] || 1).to_i
-    headers = spreadsheet.row(header_row).map { |h| h&.to_s&.strip }
-    rows = ((header_row + 1)..spreadsheet.last_row).map { |i| spreadsheet.row(i) }
-
-    # Check if name field is mapped
     unless mapping['name'].present? && mapping['name'] != 'skip'
       flash[:error] = "Name field is required. Please map a column to the Name field."
       redirect_to map_gear_imports_path and return
     end
 
-    # Build column_index => gear_field lookup
-    # mapping is { gear_field => column_header_name }
+    # Save mapping in session for the next step
+    session[:import_mapping] = mapping
+    session.delete(:import_category_resolution)
+
+    # If category column is mapped, scan data for unrecognised category values
+    if mapping['gear_category_id'].present? && mapping['gear_category_id'] != 'skip'
+      unknown = find_unknown_categories(mapping['gear_category_id'])
+      if unknown.any?
+        session[:import_unknown_categories] = unknown
+        redirect_to resolve_categories_gear_imports_path and return
+      end
+    end
+
+    # No unknown categories — import straight away
+    perform_import
+  end
+
+  def resolve_categories
+    @unknown_categories = session[:import_unknown_categories]
+    @categories = GearCategory.all.order(:name)
+
+    unless @unknown_categories&.any?
+      flash[:error] = "Nothing to resolve. Please start over."
+      redirect_to new_gear_import_path
+    end
+  end
+
+  def do_import
+    category_resolution = params[:category_resolution] || {}
+
+    # Create any new categories the user requested
+    category_resolution.each do |original_name, resolution|
+      GearCategory.find_or_create_by(name: original_name) if resolution == 'create'
+    end
+
+    session[:import_category_resolution] = category_resolution
+    perform_import
+  end
+
+  private
+
+  def find_unknown_categories(column_name)
+    tmp_path = session[:import_tmp_path]
+    require 'roo'
+    ext = File.extname(tmp_path)
+    spreadsheet = open_spreadsheet_path(tmp_path, ext)
+    header_row = (session[:import_header_row] || 1).to_i
+    headers = spreadsheet.row(header_row).map { |h| h&.to_s&.strip }
+    cat_col_index = headers.index(column_name)
+    return [] unless cat_col_index
+
+    cat_values = ((header_row + 1)..spreadsheet.last_row).map { |i|
+      v = spreadsheet.row(i)[cat_col_index]
+      v&.to_s&.strip
+    }.select(&:present?).uniq
+
+    existing_names = GearCategory.pluck(:name).map(&:downcase)
+    cat_values.reject { |v| existing_names.include?(v.downcase) }
+  end
+
+  def perform_import
+    mapping           = session[:import_mapping] || {}
+    cat_resolution    = session[:import_category_resolution] || {}
+    tmp_path          = session[:import_tmp_path]
+
+    require 'roo'
+    ext         = File.extname(tmp_path)
+    spreadsheet = open_spreadsheet_path(tmp_path, ext)
+    header_row  = (session[:import_header_row] || 1).to_i
+    headers     = spreadsheet.row(header_row).map { |h| h&.to_s&.strip }
+    rows        = ((header_row + 1)..spreadsheet.last_row).map { |i| spreadsheet.row(i) }
+
     column_to_field = {}
     mapping.each do |gear_field, column_name|
       next if column_name.blank? || column_name == 'skip'
-      column_index = headers.index(column_name)
-      column_to_field[column_index] = gear_field if column_index
+      idx = headers.index(column_name)
+      column_to_field[idx] = gear_field if idx
     end
-    
-    # Import gear items
-    success_count = 0
-    errors = []
+
+    success_count    = 0
+    errors           = []
     categories_cache = {}
-    
+
     rows.each_with_index do |row, index|
-      next if row.compact.empty? # Skip empty rows
-      
+      next if row.compact.empty?
+
       gear_params = { user_id: current_user.id }
-      
+
       column_to_field.each do |col_index, field|
         value = row[col_index]
         next if value.blank?
-        
+
         if field == 'gear_category_id'
-          # Handle category mapping - try to find by name or ID
-          category = categories_cache[value] ||= find_category(value)
+          category = categories_cache[value.to_s] ||= resolve_category(value.to_s, cat_resolution)
           gear_params[:gear_category_id] = category&.id if category
         elsif field == 'weight'
-          # Convert weight to float
           gear_params[:weight] = value.to_f
         else
           gear_params[field.to_sym] = value.to_s.strip
         end
       end
-      
+
       gear_item = GearItem.new(gear_params)
-      
       if gear_item.save
         success_count += 1
       else
         errors << "Row #{index + 2}: #{gear_item.errors.full_messages.join(', ')}"
       end
     end
-    
-    # Clean up temp file and session data
+
+    # Clean up temp file and all session keys
     File.delete(tmp_path) rescue nil
-    session.delete(:import_tmp_path)
-    session.delete(:import_headers)
-    session.delete(:import_header_row)
-    session.delete(:import_filename)
-    
+    %i[import_tmp_path import_headers import_header_row import_filename
+       import_mapping import_unknown_categories import_category_resolution].each { |k| session.delete(k) }
+
     if success_count > 0
       flash[:success] = "Successfully imported #{success_count} gear item(s)"
-      flash[:warning] = errors.join("<br>").html_safe if errors.any?
+      flash[:warning] = errors.join('<br>').html_safe if errors.any?
     else
       flash[:error] = "No items were imported. Errors: #{errors.join(', ')}"
     end
-    
+
     redirect_to gear_items_path
   end
 
-  private
-
-  def open_spreadsheet_path(path, extension)
+  def resolve_category(value, cat_resolution)
+    resolution = cat_resolution[value]
+    case resolution
+    when 'skip', nil
+      find_category(value)
+    when 'create'
+      GearCategory.find_by('LOWER(name) = LOWER(?)', value.strip)
+    else
+      GearCategory.find_by(id: resolution.to_i)
+    end
+  end
     require 'roo'
     require 'roo-xls'
 

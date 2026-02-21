@@ -28,8 +28,10 @@ Rails.application.routes.draw do
   # Gear imports
   resources :gear_imports, only: [:new, :create] do
     collection do
-      get :map
+      get  :map
       post :import_data
+      get  :resolve_categories
+      post :do_import
     end
   end
 
