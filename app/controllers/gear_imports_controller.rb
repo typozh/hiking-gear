@@ -94,7 +94,7 @@ class GearImportsController < ApplicationController
   end
 
   def import_data
-    # Intermediate step: validate mapping, then check for unknown categories
+    # Intermediate step: validate mapping, handle header row override, check for unknown categories
     mapping = params[:mapping] || {}
     tmp_path = session[:import_tmp_path]
 
@@ -106,6 +106,20 @@ class GearImportsController < ApplicationController
     unless mapping['name'].present? && mapping['name'] != 'skip'
       flash[:error] = "Name field is required. Please map a column to the Name field."
       redirect_to map_gear_imports_path and return
+    end
+
+    # Allow user to override detected header row
+    if params[:header_row].present?
+      new_row = params[:header_row].to_i
+      if new_row != session[:import_header_row].to_i && new_row >= 1
+        require 'roo'
+        ext = File.extname(tmp_path)
+        spreadsheet = open_spreadsheet_path(tmp_path, ext)
+        if new_row <= spreadsheet.last_row
+          session[:import_header_row] = new_row
+          session[:import_headers] = spreadsheet.row(new_row).map { |h| h&.to_s&.strip }.select(&:present?)
+        end
+      end
     end
 
     # Save mapping and weight unit in session for the next step
@@ -122,8 +136,8 @@ class GearImportsController < ApplicationController
       end
     end
 
-    # No unknown categories — import straight away
-    perform_import
+    # No unknown categories — go to preview
+    redirect_to preview_gear_imports_path
   end
 
   def revert
@@ -158,6 +172,70 @@ class GearImportsController < ApplicationController
     end
 
     session[:import_category_resolution] = category_resolution
+    redirect_to preview_gear_imports_path
+  end
+
+  def preview
+    tmp_path = session[:import_tmp_path]
+    unless tmp_path && File.exist?(tmp_path)
+      flash[:error] = "Import session expired. Please upload the file again."
+      redirect_to new_gear_import_path and return
+    end
+
+    mapping        = session[:import_mapping] || {}
+    cat_resolution = session[:import_category_resolution] || {}
+    weight_unit    = session[:import_weight_unit] || 'kg'
+
+    require 'roo'
+    ext         = File.extname(tmp_path)
+    spreadsheet = open_spreadsheet_path(tmp_path, ext)
+    header_row  = (session[:import_header_row] || 1).to_i
+    headers     = spreadsheet.row(header_row).map { |h| h&.to_s&.strip }
+    rows        = ((header_row + 1)..spreadsheet.last_row).map { |i| spreadsheet.row(i) }
+
+    column_to_field = {}
+    mapping.each do |gear_field, column_name|
+      next if column_name.blank? || column_name == 'skip'
+      idx = headers.index(column_name)
+      column_to_field[idx] = gear_field if idx
+    end
+
+    existing_names = current_user.gear_items.pluck(:name).map(&:downcase).to_set
+    categories_cache = {}
+
+    @new_items       = []
+    @duplicate_items = []
+    @skipped_rows    = 0
+
+    rows.each do |row|
+      next if row.compact.empty? && (@skipped_rows += 1)
+
+      item = {}
+      column_to_field.each do |col_index, field|
+        value = row[col_index]
+        next if value.blank?
+        if field == 'gear_category_id'
+          cat = categories_cache[value.to_s] ||= resolve_category(value.to_s, cat_resolution)
+          item['category'] = cat&.name
+        elsif field == 'weight'
+          item['weight'] = convert_weight(value.to_f, weight_unit)
+        else
+          item[field] = value.to_s.strip
+        end
+      end
+
+      next if item['name'].blank?
+
+      if existing_names.include?(item['name'].downcase)
+        @duplicate_items << item
+      else
+        @new_items << item
+      end
+    end
+  end
+
+  def confirm_import
+    session[:import_duplicate_action] = params[:duplicate_action].presence || 'skip'
     perform_import
   end
 
@@ -183,10 +261,11 @@ class GearImportsController < ApplicationController
   end
 
   def perform_import
-    mapping        = session[:import_mapping] || {}
-    cat_resolution = session[:import_category_resolution] || {}
-    weight_unit    = session[:import_weight_unit] || 'kg'
-    tmp_path       = session[:import_tmp_path]
+    mapping           = session[:import_mapping] || {}
+    cat_resolution    = session[:import_category_resolution] || {}
+    weight_unit       = session[:import_weight_unit] || 'kg'
+    duplicate_action  = session[:import_duplicate_action] || 'skip'
+    tmp_path          = session[:import_tmp_path]
 
     require 'roo'
     ext         = File.extname(tmp_path)
@@ -231,11 +310,25 @@ class GearImportsController < ApplicationController
         end
       end
 
-      gear_item = GearItem.new(gear_params)
-      if gear_item.save
-        success_count += 1
+      gear_item = GearItem.find_by('LOWER(name) = LOWER(?) AND user_id = ?',
+                                   gear_params[:name].to_s, current_user.id)
+
+      if gear_item
+        if duplicate_action == 'update'
+          if gear_item.update(gear_params.except(:user_id, :gear_import_id))
+            success_count += 1
+          else
+            errors << "Row #{index + 2}: #{gear_item.errors.full_messages.join(', ')}"
+          end
+        end
+        # 'skip' (default) — do nothing
       else
-        errors << "Row #{index + 2}: #{gear_item.errors.full_messages.join(', ')}"
+        gear_item = GearItem.new(gear_params)
+        if gear_item.save
+          success_count += 1
+        else
+          errors << "Row #{index + 2}: #{gear_item.errors.full_messages.join(', ')}"
+        end
       end
     end
 
@@ -249,7 +342,8 @@ class GearImportsController < ApplicationController
     # Clean up temp file and all session keys
     File.delete(tmp_path) rescue nil
     %i[import_tmp_path import_headers import_header_row import_filename
-       import_mapping import_weight_unit import_unknown_categories import_category_resolution].each { |k| session.delete(k) }
+       import_mapping import_weight_unit import_unknown_categories
+       import_category_resolution import_duplicate_action].each { |k| session.delete(k) }
 
     if success_count > 0
       flash[:success] = "Successfully imported #{success_count} gear item(s)"

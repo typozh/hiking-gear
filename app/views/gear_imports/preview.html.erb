@@ -1,0 +1,208 @@
+<div class="page-header">
+  <h1>👀 Preview Import</h1>
+  <p>Review what will be imported before confirming.</p>
+</div>
+
+<div class="mapping-container">
+
+  <%# ── Summary cards ──────────────────────────────────────── %>
+  <div class="preview-summary">
+    <div class="summary-card summary-card--new">
+      <div class="summary-number"><%= @new_items.count %></div>
+      <div class="summary-label">New items</div>
+    </div>
+    <div class="summary-card summary-card--dup">
+      <div class="summary-number"><%= @duplicate_items.count %></div>
+      <div class="summary-label">Already exist</div>
+    </div>
+    <% if @skipped_rows > 0 %>
+      <div class="summary-card summary-card--skip">
+        <div class="summary-number"><%= @skipped_rows %></div>
+        <div class="summary-label">Empty rows (skipped)</div>
+      </div>
+    <% end %>
+  </div>
+
+  <%# ── Duplicate handling ─────────────────────────────────── %>
+  <%= form_tag confirm_import_gear_imports_path, method: :post do %>
+
+    <% if @duplicate_items.any? %>
+      <div class="instructions-card instructions-card--warn">
+        <h3>⚠️ <%= @duplicate_items.count %> duplicate(s) found</h3>
+        <p>Items with the same name already exist in your gear list. Choose how to handle them:</p>
+        <div class="dup-options">
+          <label class="dup-option">
+            <input type="radio" name="duplicate_action" value="skip" checked>
+            <div>
+              <strong>Skip duplicates</strong>
+              <span>Only import the <%= @new_items.count %> new items. Existing items are left unchanged.</span>
+            </div>
+          </label>
+          <label class="dup-option">
+            <input type="radio" name="duplicate_action" value="update">
+            <div>
+              <strong>Update duplicates</strong>
+              <span>Overwrite existing items with the imported values (weight, category, etc.).</span>
+            </div>
+          </label>
+        </div>
+      </div>
+    <% else %>
+      <input type="hidden" name="duplicate_action" value="skip">
+    <% end %>
+
+    <%# ── New items table ────────────────────────────────────── %>
+    <% if @new_items.any? %>
+      <div class="preview-section">
+        <h3>✅ New items (<%= @new_items.count %>)</h3>
+        <div class="table-scroll">
+          <table class="preview-table">
+            <thead>
+              <tr>
+                <th>Name</th><th>Brand</th><th>Category</th><th class="col-num">Weight (g)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @new_items.first(50).each do |item| %>
+                <tr>
+                  <td><%= item['name'] %></td>
+                  <td><%= item['brand'] %></td>
+                  <td><%= item['category'] %></td>
+                  <td class="col-num"><%= item['weight'] ? (item['weight'].to_f * 1000).round : '—' %></td>
+                </tr>
+              <% end %>
+              <% if @new_items.count > 50 %>
+                <tr><td colspan="4" style="color:#888; text-align:center;">… and <%= @new_items.count - 50 %> more</td></tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% end %>
+
+    <%# ── Duplicate items table ──────────────────────────────── %>
+    <% if @duplicate_items.any? %>
+      <div class="preview-section preview-section--dup">
+        <h3>🔁 Already in your gear list (<%= @duplicate_items.count %>)</h3>
+        <div class="table-scroll">
+          <table class="preview-table">
+            <thead>
+              <tr>
+                <th>Name</th><th>Brand</th><th>Category</th><th class="col-num">Weight (g)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @duplicate_items.first(50).each do |item| %>
+                <tr>
+                  <td><%= item['name'] %></td>
+                  <td><%= item['brand'] %></td>
+                  <td><%= item['category'] %></td>
+                  <td class="col-num"><%= item['weight'] ? (item['weight'].to_f * 1000).round : '—' %></td>
+                </tr>
+              <% end %>
+              <% if @duplicate_items.count > 50 %>
+                <tr><td colspan="4" style="color:#888; text-align:center;">… and <%= @duplicate_items.count - 50 %> more</td></tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="form-actions">
+      <% if @new_items.any? || (@duplicate_items.any?) %>
+        <%= submit_tag "Confirm Import", class: "btn-primary" %>
+      <% else %>
+        <p style="color:#e53935;"><strong>Nothing to import.</strong> All rows were empty or already exist and duplicates are set to skip.</p>
+      <% end %>
+      <%= link_to "← Back to mapping", map_gear_imports_path, class: "btn-secondary" %>
+      <%= link_to "Cancel", gear_items_path, class: "btn-secondary" %>
+    </div>
+  <% end %>
+</div>
+
+<style>
+.preview-summary {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.summary-card {
+  flex: 1;
+  min-width: 120px;
+  padding: 1.25rem;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+.summary-card--new  { background: #e8f5e9; }
+.summary-card--dup  { background: #fff8e1; }
+.summary-card--skip { background: #f5f5f5; }
+
+.summary-number { font-size: 2rem; font-weight: 700; }
+.summary-label  { font-size: 0.85rem; color: #666; margin-top: 0.25rem; }
+
+.instructions-card--warn {
+  background: #fff8e1;
+  border-left: 4px solid #f9a825;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.instructions-card--warn h3 { margin-top: 0; color: #e65100; }
+
+.dup-options { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
+
+.dup-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: white;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.dup-option:has(input:checked) { border-color: #f9a825; background: #fffde7; }
+
+.dup-option div { display: flex; flex-direction: column; gap: 0.2rem; }
+.dup-option strong { font-size: 0.95rem; }
+.dup-option span   { font-size: 0.85rem; color: #555; }
+
+.preview-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+  margin-bottom: 1.5rem;
+}
+
+.preview-section h3 { margin-top: 0; }
+.preview-section--dup { border-left: 4px solid #f9a825; }
+
+.preview-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.preview-table th, .preview-table td { padding: 0.6rem 0.8rem; border-bottom: 1px solid #eee; text-align: left; }
+.preview-table th  { background: #f5f5f5; font-weight: 600; }
+.col-num { text-align: right; }
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 2px solid #eee;
+  margin-top: 1rem;
+}
+
+.header-row-section {
+  background: #f5f5f5;
+  padding: 1rem 1.25rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+}
+</style>

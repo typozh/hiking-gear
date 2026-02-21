@@ -49,6 +49,15 @@
   </div>
 
     <%= form_tag import_data_gear_imports_path, method: :post, class: "mapping-form" do %>
+
+    <div class="header-row-section">
+      <label><strong>📍 Header row</strong> — auto-detected as row <strong><%= @header_row %></strong></label>
+      <div style="display:flex; gap:0.5rem; align-items:center; margin-top:0.4rem;">
+        <span style="font-size:0.85rem; color:#555;">Override row number:</span>
+        <%= number_field_tag :header_row, @header_row, min: 1, max: 50, class: 'filter-input filter-input--sm', style: 'width:60px;' %>
+      </div>
+    </div>
+
     <div class="mapping-grid">
       <div class="mapping-header">
         <div>Gear Field</div>
@@ -95,7 +104,7 @@
     </div>
 
     <div class="form-actions">
-      <%= submit_tag "Import Gear Items", class: "btn-primary" %>
+      <%= submit_tag "Preview Import →", class: "btn-primary" %>
       <%= link_to "Back", new_gear_import_path, class: "btn-secondary" %>
       <%= link_to "Cancel", gear_items_path, class: "btn-secondary" %>
     </div>

@@ -32,6 +32,8 @@ Rails.application.routes.draw do
       post :import_data
       get  :resolve_categories
       post :do_import
+      get  :preview
+      post :confirm_import
     end
     member do
       delete :revert
