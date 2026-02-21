@@ -1,0 +1,35 @@
+<div class="trips-index">
+  <div class="page-header">
+    <h1>My Trips</h1>
+    <%= link_to 'New Trip', new_trip_path, class: 'btn-primary' %>
+  </div>
+
+  <% if @upcoming_trips.any? %>
+    <section class="trips-section">
+      <h2>Upcoming Trips</h2>
+      <div class="trips-grid">
+        <% @upcoming_trips.each do |trip| %>
+          <%= render 'trip_card', trip: trip %>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
+  <% if @past_trips.any? %>
+    <section class="trips-section">
+      <h2>Past Trips</h2>
+      <div class="trips-grid">
+        <% @past_trips.each do |trip| %>
+          <%= render 'trip_card', trip: trip %>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
+  <% if @upcoming_trips.empty? && @past_trips.empty? %>
+    <div class="empty-state">
+      <p>No trips yet. Start planning your first adventure!</p>
+      <%= link_to 'Create Your First Trip', new_trip_path, class: 'btn-primary' %>
+    </div>
+  <% end %>
+</div>

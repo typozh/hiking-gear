@@ -1,0 +1,59 @@
+<div class="form-container">
+  <h1><%= @gear_item.persisted? ? 'Edit Gear Item' : 'New Gear Item' %></h1>
+
+  <%= form_with model: @gear_item, local: true do |f| %>
+    <%= render 'shared/error_messages', object: @gear_item %>
+
+    <div class="form-group">
+      <%= f.label :name %>
+      <%= f.text_field :name, required: true, class: 'form-control' %>
+    </div>
+
+    <div class="form-group">
+      <%= f.label :description %>
+      <%= f.text_area :description, rows: 3, class: 'form-control' %>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <%= f.label :weight, 'Weight (kg)' %>
+        <%= f.number_field :weight, step: 0.001, required: true, class: 'form-control' %>
+        <small>Enter in kilograms (e.g., 0.250 for 250g)</small>
+      </div>
+
+      <div class="form-group">
+        <%= f.label :quantity %>
+        <%= f.number_field :quantity, min: 1, required: true, class: 'form-control' %>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <%= f.label :gear_category_id, 'Category' %>
+      <%= f.collection_select :gear_category_id, @categories, :id, :name,
+          { include_blank: 'Select category...' },
+          { class: 'form-control' } %>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <%= f.label :brand %>
+        <%= f.text_field :brand, class: 'form-control' %>
+      </div>
+
+      <div class="form-group">
+        <%= f.label :price %>
+        <%= f.number_field :price, step: 0.01, class: 'form-control' %>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <%= f.check_box :consumable %>
+      <%= f.label :consumable, 'Consumable item (food, fuel, etc.)' %>
+    </div>
+
+    <div class="form-actions">
+      <%= f.submit class: 'btn-primary' %>
+      <%= link_to 'Cancel', @gear_item.persisted? ? @gear_item : gear_items_path, class: 'btn-secondary' %>
+    </div>
+  <% end %>
+</div>

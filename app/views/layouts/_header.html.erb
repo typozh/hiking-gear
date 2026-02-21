@@ -1,0 +1,19 @@
+<header class="header">
+  <nav class="nav">
+    <div class="nav-brand">
+      <h1>⛰️ Hiking Gear Manager</h1>
+    </div>
+    
+    <ul class="nav-menu">
+      <li><%= link_to 'Dashboard', root_path, class: 'nav-link' %></li>
+      <li><%= link_to 'Trips', trips_path, class: 'nav-link' %></li>
+      <li><%= link_to 'Gear', gear_items_path, class: 'nav-link' %></li>
+      <li><%= link_to 'Imports', gear_imports_path, class: 'nav-link' %></li>
+    </ul>
+
+    <div class="nav-user">
+      <span>👤 <%= current_user.name || current_user.email %></span>
+      <%= button_to 'Logout', logout_path, method: :delete, class: 'btn-secondary' %>
+    </div>
+  </nav>
+</header>

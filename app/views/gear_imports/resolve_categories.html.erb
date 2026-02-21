@@ -1,0 +1,142 @@
+<div class="page-header">
+  <h1>📂 Resolve Unknown Categories</h1>
+  <p>These category names from your file don't match any existing categories.</p>
+</div>
+
+<div class="mapping-container">
+  <div class="instructions-card">
+    <h3>📝 What would you like to do?</h3>
+    <p>For each unrecognised category, choose one of the following:</p>
+    <ul>
+      <li><strong>Map to existing</strong> — assign items to a category already in the database</li>
+      <li><strong>Create new</strong> — add a new category with that name and assign items to it</li>
+      <li><strong>Skip</strong> — import the items without any category</li>
+    </ul>
+  </div>
+
+  <%= form_tag do_import_gear_imports_path, method: :post do %>
+    <div class="mapping-form">
+      <div class="mapping-grid">
+        <div class="mapping-header">
+          <div>Category in your file</div>
+          <div>←</div>
+          <div>Action</div>
+        </div>
+
+        <% @unknown_categories.each do |cat_name| %>
+          <div class="mapping-row">
+            <div class="column-name">
+              <strong><%= cat_name %></strong>
+              <span class="sample-value">not found in database</span>
+            </div>
+
+            <div class="arrow">←</div>
+
+            <div class="field-select">
+              <select name="category_resolution[<%= cat_name %>]" class="mapping-select">
+                <option value="create" selected>✨ Create new category "<%= cat_name %>"</option>
+                <optgroup label="Map to existing category">
+                  <% @categories.each do |cat| %>
+                    <option value="<%= cat.id %>"><%= cat.icon %> <%= cat.name %></option>
+                  <% end %>
+                </optgroup>
+                <option value="skip">— Skip (no category) —</option>
+              </select>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="form-actions">
+        <%= submit_tag "Continue Import", class: "btn-primary" %>
+        <a class="btn-secondary" href="<%= map_gear_imports_path %>">Back to mapping</a>
+        <a class="btn-secondary" href="<%= gear_items_path %>">Cancel</a>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<style>
+.mapping-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.instructions-card {
+  background: #fff8e1;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  border-left: 4px solid #f9a825;
+}
+
+.instructions-card h3 { margin-top: 0; color: #f57f17; }
+.instructions-card ul { margin: 0.5rem 0 0 1.2rem; }
+
+.mapping-form {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.mapping-header {
+  display: grid;
+  grid-template-columns: 1fr 50px 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f57f17;
+  color: white;
+  border-radius: 8px 8px 0 0;
+  font-weight: 600;
+  text-align: center;
+}
+
+.mapping-grid { margin-bottom: 2rem; }
+
+.mapping-row {
+  display: grid;
+  grid-template-columns: 1fr 50px 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid #eee;
+  align-items: center;
+}
+
+.mapping-row:hover { background: #fffde7; }
+
+.column-name { display: flex; flex-direction: column; gap: 0.25rem; }
+
+.sample-value { font-size: 0.85rem; color: #e65100; font-style: italic; }
+
+.arrow { text-align: center; font-size: 1.5rem; color: #f57f17; }
+
+.field-select { display: flex; flex-direction: column; }
+
+.mapping-select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  background: white;
+}
+
+.mapping-select:focus { outline: none; border-color: #f57f17; }
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 2px solid #eee;
+}
+
+@media (max-width: 768px) {
+  .mapping-row, .mapping-header {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  .arrow { transform: rotate(90deg); }
+}
+</style>

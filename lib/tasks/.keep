@@ -1,0 +1,2 @@
+# Add your own tasks in files placed in lib/tasks ending in .rake
+# Tasks are available to your application code and the command line.

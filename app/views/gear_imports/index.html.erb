@@ -1,0 +1,96 @@
+<div class="page-header">
+  <h1>📥 Import History</h1>
+  <p>All gear imports you have performed. You can revert any import to remove the items it created.</p>
+  <%= link_to "New Import", new_gear_import_path, class: "btn-primary" %>
+</div>
+
+<% if @gear_imports.empty? %>
+  <div class="empty-state">
+    <p>No imports yet. <%= link_to "Import gear from a file", new_gear_import_path %>.</p>
+  </div>
+<% else %>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>File</th>
+        <th>Items imported</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @gear_imports.each do |import| %>
+        <tr>
+          <td><%= import.created_at.strftime("%d.%m.%Y %H:%M") %></td>
+          <td><%= import.filename %></td>
+          <td><%= import.items_count %></td>
+          <td>
+            <%= button_to "↩ Revert",
+                revert_gear_import_path(import),
+                method: :delete,
+                class: "btn-danger btn-small",
+                data: { confirm: "Delete all #{import.items_count} item(s) from this import? This cannot be undone." } %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>
+
+<style>
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.data-table th,
+.data-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.data-table th {
+  background: #f5f5f5;
+  font-weight: 600;
+}
+
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tr:hover td {
+  background: #fafafa;
+}
+
+.btn-danger {
+  background: #e53935;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.btn-danger:hover {
+  background: #c62828;
+}
+
+.btn-small {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  background: white;
+  border-radius: 8px;
+  color: #666;
+}
+</style>

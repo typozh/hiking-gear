@@ -1,0 +1,62 @@
+<div class="form-container">
+  <h1><%= @trip.persisted? ? 'Edit Trip' : 'New Trip' %></h1>
+
+  <%= form_with model: @trip, local: true do |f| %>
+    <%= render 'shared/error_messages', object: @trip %>
+
+    <div class="form-group">
+      <%= f.label :name %>
+      <%= f.text_field :name, required: true, class: 'form-control' %>
+    </div>
+
+    <div class="form-group">
+      <%= f.label :description %>
+      <%= f.text_area :description, rows: 4, class: 'form-control' %>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <%= f.label :start_date %>
+        <%= f.date_field :start_date, required: true, class: 'form-control' %>
+      </div>
+
+      <div class="form-group">
+        <%= f.label :end_date %>
+        <%= f.date_field :end_date, class: 'form-control' %>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <%= f.label :location %>
+      <%= f.text_field :location, class: 'form-control' %>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <%= f.label :target_weight_kg, 'Target Weight (kg)' %>
+        <%= f.number_field :target_weight_kg, step: 0.1, class: 'form-control' %>
+      </div>
+
+      <div class="form-group">
+        <%= f.label :difficulty_level %>
+        <%= f.select :difficulty_level, 
+            ['Easy', 'Moderate', 'Hard', 'Expert'], 
+            { include_blank: 'Select...' }, 
+            { class: 'form-control' } %>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <%= f.label :status %>
+      <%= f.select :status, 
+          ['planning', 'packed', 'in_progress', 'completed'], 
+          {}, 
+          { class: 'form-control' } %>
+    </div>
+
+    <div class="form-actions">
+      <%= f.submit class: 'btn-primary' %>
+      <%= link_to 'Cancel', @trip.persisted? ? @trip : trips_path, class: 'btn-secondary' %>
+    </div>
+  <% end %>
+</div>

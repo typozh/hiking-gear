@@ -1,0 +1,132 @@
+<div class="trip-show" data-controller="trip-gear" data-trip-id="<%= @trip.id %>">
+  <div class="page-header">
+    <div>
+      <h1><%= @trip.name %></h1>
+      <p class="trip-meta">
+        📍 <%= @trip.location %> | 
+        📅 <%= @trip.start_date.strftime('%B %d, %Y') %> - <%= @trip.end_date&.strftime('%B %d, %Y') || 'TBD' %>
+        (<%= @trip.duration_days %> days)
+      </p>
+    </div>
+    <div class="header-actions">
+      <%= link_to 'Edit', edit_trip_path(@trip), class: 'btn-secondary' %>
+      <%= button_to 'Delete', @trip, method: :delete, data: { confirm: 'Are you sure?' }, class: 'btn-danger' %>
+    </div>
+  </div>
+
+  <% if @trip.description.present? %>
+    <div class="trip-description">
+      <p><%= @trip.description %></p>
+    </div>
+  <% end %>
+
+  <div class="trip-stats">
+    <div class="stat-card">
+      <h3>⚖️ Total Weight</h3>
+      <p class="stat-number" data-trip-gear-target="totalWeight"><%= @trip.total_weight.round(2) %>kg</p>
+      <% if @trip.target_weight_kg %>
+        <p class="stat-subtitle">Target: <%= @trip.target_weight_kg %>kg</p>
+      <% end %>
+    </div>
+    
+    <div class="stat-card">
+      <h3>📦 Total Items</h3>
+      <p class="stat-number" data-trip-gear-target="totalItems"><%= @trip.total_items_count %></p>
+    </div>
+    
+    <div class="stat-card">
+      <h3>📊 Status</h3>
+      <p class="stat-number"><%= @trip.status&.titleize || 'Planning' %></p>
+    </div>
+  </div>
+
+  <div class="drag-drop-container">
+    <!-- Left Side: Available Gear -->
+    <div class="available-gear-panel">
+      <h2>🎒 Available Gear</h2>
+      <p class="help-text">Drag items to add them to your trip</p>
+      
+      <% if @available_gear.any? %>
+        <div class="gear-grid">
+          <% @available_gear.group_by(&:gear_category).sort_by { |cat, _| cat&.name || 'Other' }.each do |category, items| %>
+            <div class="gear-category-group">
+              <h3><%= category&.icon %> <%= category&.name || 'Other' %></h3>
+              <div class="gear-items">
+                <% items.each do |gear_item| %>
+                  <div class="gear-card draggable" 
+                       draggable="true"
+                       data-gear-id="<%= gear_item.id %>"
+                       data-action="dragstart->trip-gear#dragStart dragend->trip-gear#dragEnd"
+                       data-trip-gear-target="availableItem">
+                    <div class="gear-card-header">
+                      <strong><%= gear_item.name %></strong>
+                      <span class="gear-weight"><%= (gear_item.weight * 1000).round %>g</span>
+                    </div>
+                    <% if gear_item.brand.present? %>
+                      <div class="gear-card-meta"><%= gear_item.brand %></div>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="empty-state">
+          All your gear is already in this trip!<br>
+          <%= link_to 'Add more gear to your inventory', new_gear_item_path, class: 'btn-secondary' %>
+        </p>
+      <% end %>
+    </div>
+
+    <!-- Right Side: Trip Gear List -->
+    <div class="trip-gear-panel">
+      <h2>📋 Trip Gear List</h2>
+      <p class="help-text">Drop items here to add them</p>
+      
+      <div class="trip-gear-drop-zone"
+           data-trip-gear-target="tripList"
+           data-action="dragover->trip-gear#dragOver drop->trip-gear#drop dragenter->trip-gear#dragEnter dragleave->trip-gear#dragLeave">
+        
+        <% if @trip_gears.any? %>
+          <div class="trip-gear-list">
+            <% @trip_gears.group_by { |tg| tg.gear_item.gear_category }.sort_by { |cat, _| cat&.name || 'Other' }.each do |category, trip_gears| %>
+              <div class="trip-category-section">
+                <h3 class="category-header"><%= category&.icon %> <%= category&.name || 'Other' %></h3>
+                <% trip_gears.each do |trip_gear| %>
+                  <div class="trip-gear-item <%= 'packed' if trip_gear.packed %>" data-trip-gear-target="tripItem">
+                    <div class="trip-gear-content">
+                      <div class="trip-gear-main">
+                        <label class="packed-checkbox">
+                          <input type="checkbox" 
+                                 <%= 'checked' if trip_gear.packed %>
+                                 data-trip-gear-id="<%= trip_gear.id %>"
+                                 data-action="change->trip-gear#togglePacked">
+                          <span class="gear-name"><%= trip_gear.gear_item.name %></span>
+                        </label>
+                        <span class="gear-quantity">Qty: <%= trip_gear.quantity %></span>
+                      </div>
+                      <div class="trip-gear-details">
+                        <span class="gear-weight-each"><%= (trip_gear.gear_item.weight * 1000).round %>g each</span>
+                        <span class="gear-weight-total"><%= (trip_gear.total_weight * 1000).round %>g total</span>
+                        <button class="btn-remove" 
+                                data-trip-gear-id="<%= trip_gear.id %>"
+                                data-action="click->trip-gear#removeGear">
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="empty-drop-zone">
+            <p>🎯 Drag gear items here to add them to your trip</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

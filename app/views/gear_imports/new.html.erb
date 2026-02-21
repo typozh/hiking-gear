@@ -1,0 +1,49 @@
+<div class="page-header">
+  <h1>Import Gear Items</h1>
+</div>
+
+<div style="max-width: 600px; margin: 0 auto;">
+  <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <h2>Upload Your File</h2>
+    <p>Import multiple gear items at once from a CSV or Excel file.</p>
+
+    <div style="background: #e3f2fd; padding: 1rem; border-radius: 8px; margin: 1.5rem 0;">
+      <strong>Supported Formats:</strong> CSV (.csv), Excel (.xlsx, .xls)
+    </div>
+
+    <div style="background: #fff3e0; padding: 1rem; border-radius: 8px; margin: 1.5rem 0;">
+      <strong>Tips:</strong>
+      <ul>
+        <li>First row must be column headers</li>
+        <li>At minimum, a column for the gear name is required</li>
+        <li>Optional: brand, model, weight (in kg), notes, category</li>
+      </ul>
+    </div>
+
+    <%= form_tag gear_imports_path, method: :post, multipart: true do %>
+      <div style="margin-bottom: 1.5rem;">
+        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Select File</label>
+        <%= file_field_tag :file, accept: ".csv,.xls,.xlsx", required: true, style: "width: 100%;" %>
+      </div>
+      <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+        <%= submit_tag "Upload and Continue", class: "btn-primary" %>
+        <%= link_to "Cancel", gear_items_path, class: "btn-secondary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <div style="margin-top: 2rem; text-align: center;">
+    <p>Need a template? <a href="#" onclick="downloadSampleCSV(); return false;" style="color: #2196F3;">Download sample CSV</a></p>
+  </div>
+</div>
+
+<script>
+function downloadSampleCSV() {
+  var csv = "Name,Brand,Model,Weight (kg),Category,Notes\r\nTent,MSR,Hubba NX,1.54,Shelter,2-person\r\nSleeping Bag,WM,UltraLite,0.85,Sleep System,\r\nBackpack,Osprey,Exos 58,1.15,Pack,58L\r\nWater Filter,Sawyer,Squeeze,0.09,Water,";
+  var blob = new Blob([csv], { type: "text/csv" });
+  var url = window.URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = "gear_import_sample.csv"; a.click();
+  window.URL.revokeObjectURL(url);
+}
+</script>

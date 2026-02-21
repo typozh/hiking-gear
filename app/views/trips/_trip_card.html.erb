@@ -1,0 +1,21 @@
+<%= link_to trip, class: "trip-card status-#{trip.weight_status}" do %>
+  <h3><%= trip.name %></h3>
+  <p class="trip-location">📍 <%= trip.location %></p>
+  <p class="trip-dates">
+    📅 <%= trip.start_date.strftime('%b %d') %> 
+    <% if trip.end_date %>
+      - <%= trip.end_date.strftime('%b %d, %Y') %>
+      (<%= trip.duration_days %> days)
+    <% end %>
+  </p>
+  <div class="trip-weight">
+    <p>⚖️ Weight: <%= trip.total_weight.round(2) %>kg</p>
+    <% if trip.target_weight_kg %>
+      <p class="weight-target">Target: <%= trip.target_weight_kg %>kg</p>
+      <div class="weight-bar">
+        <div class="weight-progress" style="width: <%= [trip.total_weight / trip.target_weight_kg * 100, 100].min %>%"></div>
+      </div>
+    <% end %>
+  </div>
+  <p class="trip-items-count">📦 <%= trip.total_items_count %> items</p>
+<% end %>
