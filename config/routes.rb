@@ -29,7 +29,7 @@ Rails.application.routes.draw do
   resources :gear_imports, only: [:new, :create] do
     collection do
       get :map
-      post :process
+      post :import_data
     end
   end
 

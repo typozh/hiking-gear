@@ -48,7 +48,7 @@
     </div>
   </div>
 
-  <%= form_with url: process_gear_imports_path, method: :post, local: true, class: "mapping-form" do |f| %>
+    <%= form_tag import_data_gear_imports_path, method: :post, class: "mapping-form" do %>
     <div class="mapping-grid">
       <div class="mapping-header">
         <div>Gear Field</div>
@@ -83,7 +83,7 @@
     </div>
 
     <div class="form-actions">
-      <%= f.submit "Import Gear Items", class: "btn-primary", data: { confirm: "This will create gear items from your file. Continue?" } %>
+      <%= submit_tag "Import Gear Items", class: "btn-primary" %>
       <%= link_to "Back", new_gear_import_path, class: "btn-secondary" %>
       <%= link_to "Cancel", gear_items_path, class: "btn-secondary" %>
     </div>

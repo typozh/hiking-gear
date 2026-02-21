@@ -60,7 +60,7 @@ class GearImportsController < ApplicationController
     @categories = GearCategory.all.order(:name)
   end
 
-  def process
+  def import_data
     # Process the import with user's column mapping
     mapping = params[:mapping] || {}
     import_data = session[:import_data]
