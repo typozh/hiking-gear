@@ -26,11 +26,16 @@ class GearImportsController < ApplicationController
 
       # Parse file to extract headers only
       spreadsheet = open_spreadsheet_path(tmp_path, ext)
-      headers = spreadsheet.row(1)
 
-      # Store only the path and headers in the session (no bulk data in cookie)
+      # Auto-detect the header row: find the row (within first 10) with the most non-empty cells
+      last_scan_row = [spreadsheet.last_row, 10].min
+      header_row_index = (1..last_scan_row).max_by { |i| spreadsheet.row(i).count { |c| c.present? } }
+      headers = spreadsheet.row(header_row_index).map { |h| h&.to_s&.strip }.select(&:present?)
+
+      # Store only the path, detected header row, and headers in the session (no bulk data in cookie)
       session[:import_tmp_path] = tmp_path
       session[:import_headers] = headers
+      session[:import_header_row] = header_row_index
       session[:import_filename] = uploaded_file.original_filename
 
       redirect_to map_gear_imports_path
@@ -54,13 +59,17 @@ class GearImportsController < ApplicationController
       redirect_to new_gear_import_path and return
     end
 
+    @header_row = session[:import_header_row] || 1
+
     # Build preview rows by re-reading the file (avoids session cookie overflow)
     begin
       require 'roo'
       ext = File.extname(tmp_path)
       spreadsheet = open_spreadsheet_path(tmp_path, ext)
-      @preview_rows = []
-      [spreadsheet.last_row, 6].min.times { |i| @preview_rows << spreadsheet.row(i + 1) }
+      # Show header row + up to 5 data rows
+      start_row = @header_row
+      end_row = [spreadsheet.last_row, start_row + 5].min
+      @preview_rows = (start_row..end_row).map { |i| spreadsheet.row(i) }
     rescue => e
       @preview_rows = [@headers]
     end
@@ -92,8 +101,9 @@ class GearImportsController < ApplicationController
     require 'roo'
     ext = File.extname(tmp_path)
     spreadsheet = open_spreadsheet_path(tmp_path, ext)
-    headers = spreadsheet.row(1)
-    rows = (2..spreadsheet.last_row).map { |i| spreadsheet.row(i) }
+    header_row = (session[:import_header_row] || 1).to_i
+    headers = spreadsheet.row(header_row).map { |h| h&.to_s&.strip }
+    rows = ((header_row + 1)..spreadsheet.last_row).map { |i| spreadsheet.row(i) }
 
     # Check if name field is mapped
     unless mapping['name'].present? && mapping['name'] != 'skip'
@@ -149,6 +159,7 @@ class GearImportsController < ApplicationController
     File.delete(tmp_path) rescue nil
     session.delete(:import_tmp_path)
     session.delete(:import_headers)
+    session.delete(:import_header_row)
     session.delete(:import_filename)
     
     if success_count > 0
