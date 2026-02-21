@@ -3,14 +3,6 @@ class GearImportsController < ApplicationController
 
   def new
     # Show upload form
-    # Check if roo gem is available
-    begin
-      require 'roo'
-      @roo_available = true
-    rescue LoadError
-      @roo_available = false
-      flash.now[:warning] = "Import feature requires additional gems. Please run 'bundle install' on the server to enable file imports."
-    end
   end
 
   def create
