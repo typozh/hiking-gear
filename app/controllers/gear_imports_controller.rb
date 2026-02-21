@@ -239,6 +239,8 @@ class GearImportsController < ApplicationController
       GearCategory.find_by(id: resolution.to_i)
     end
   end
+
+  def open_spreadsheet_path(path, extension)
     require 'roo'
     require 'roo-xls'
 
