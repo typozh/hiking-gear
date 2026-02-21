@@ -23,7 +23,13 @@ Rails.application.routes.draw do
   end
 
   # Gear items
-  resources :gear_items
+  resources :gear_items do
+    collection do
+      post :bulk_update
+      post :bulk_destroy
+      get  :export
+    end
+  end
 
   # Gear imports
   resources :gear_imports, only: [:new, :create, :index] do
